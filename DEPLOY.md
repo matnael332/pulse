@@ -11,7 +11,7 @@ commands on every push, so they are known to work.
 | `pulse:local` image | the whole product: pipeline, dashboard, API (`Dockerfile`) |
 | `dashboard` service | Streamlit on port 8501, always up |
 | `api` service | prediction API on port 8000, always up |
-| `server` service | the site's backend (`pulse-server`) on port 8100: sign-in, companies, the operator's approval; migrates the database on start |
+| `server` service | the site (`pulse-server`) on port 8100: the web pages and their API, sign-in, companies, the operator's approval; migrates the database on start |
 | `postgres` service | the server's database (Postgres 17); publishes no port |
 | `job` service | runs a command on demand (`synth`, the pipeline); not started by `up` |
 | `pulse-data` volume | all customer data, one folder per customer: `/srv/pulse/customers/<slug>/` |
@@ -98,9 +98,10 @@ From your own computer:
 ssh -L 8501:localhost:8501 -L 8000:localhost:8000 -L 8100:localhost:8100 <user>@<server>
 ```
 
-Then browse to http://localhost:8501 (dashboard), http://localhost:8000/health (API) and
-http://localhost:8100/health (server). Signing in through the tunnel needs
-`PULSE_PUBLIC_URL=http://localhost:8100` and that redirect URI registered with the provider.
+Then browse to http://localhost:8100 (the site), http://localhost:8501 (dashboard) and
+http://localhost:8000/health (API). Signing in through the tunnel needs
+`PULSE_PUBLIC_URL=http://localhost:8100` (the address in the browser, exactly: `127.0.0.1` is a
+different origin and its writes are refused) and that redirect URI registered with the provider.
 
 ## Day to day
 
@@ -110,7 +111,7 @@ http://localhost:8100/health (server). Signing in through the tunnel needs
 | Show another customer | set `PULSE_CUSTOMER=<slug>` in `.env`, then `docker compose up -d` |
 | Update to a new version | `git pull && docker compose up -d --build` |
 | Logs | `docker compose logs -f dashboard api server` |
-| Approve a company | sign in as an operator, then `POST /api/admin/companies/<id>/approve` (the web site comes in step 6.4) |
+| Approve a company | sign in to the site with an operator's address: it opens on the companies screen |
 | Back up the server's database | `docker compose exec -T postgres pg_dump -U pulse pulse > pulse-db-$(date +%F).sql` |
 | Back up all customer data | `docker run --rm -v pulse_pulse-data:/srv/pulse -v "$PWD":/backup busybox tar czf /backup/pulse-data-$(date +%F).tgz -C /srv pulse` |
 | Stop | `docker compose down` (the volume stays; `down -v` deletes it with all customer data) |
