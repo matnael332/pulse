@@ -14,6 +14,22 @@ os.environ.setdefault("CREWAI_TESTING", "true")
 os.environ.setdefault("MPLBACKEND", "Agg")
 
 SPEC_REF = "tests.toy_spec:SPEC"
+PERSONAL = ("שם עובד", "ת.ז.", "טלפון")  # the scrambled export's personal columns
+
+
+@pytest.fixture(scope="session")
+def scrambled_export(tmp_path_factory):
+    """A customer's export as it comes: 80 synthetic accounts, no planted dirt (round trips are
+    exact), scrambled into Hebrew Excel sheets, monthly files and Israeli dates."""
+    from types import SimpleNamespace
+
+    from pulse_specs.workforce_saas.scramble import scramble
+    from pulse_specs.workforce_saas.synth import SynthConfig, write_dataset
+
+    base = tmp_path_factory.mktemp("export")
+    raw = write_dataset(base / "synth", SynthConfig(accounts=80, dirt=0.0))
+    export = scramble(raw, base / "export.zip", rows_per_sheet=30_000)
+    return SimpleNamespace(raw=raw, export=export)
 
 
 @pytest.fixture(scope="session")
