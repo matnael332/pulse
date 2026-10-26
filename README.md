@@ -93,8 +93,13 @@ reload and forwards `/api`, `/auth` and `/health` to the server; start the serve
 `npm run format:check` are what CI runs.
 
 The site is Hebrew or English (an English browser opens in English, any other in Hebrew; the
-switch is remembered), right-to-left in Hebrew, light or dark like the system, and one page per
-state: sign-in, the company's name, waiting for approval (or rejected, suspended), an active
+switch is remembered), right-to-left in Hebrew, and dark only: black, white and one red for risk,
+after the SpaceX DESIGN.md of awesome-design-md, with Barlow Condensed and Noto Sans Hebrew served
+from the site itself. A visitor sees the landing page (`/`, and `/login` where a failed sign-in
+comes back): customers in orbit behind the first screen, how it works as the product's progress
+bar, a sample customer's reasons, what happens to the data, and Google or Microsoft to sign in;
+everything that moves can be paused, and stands still for reduced motion. A signed-in user has one
+page per state: the company's name, waiting for approval (or rejected, suspended), an active
 company's pages, and the operator's companies screen.
 
 An active company uploads its export on the site (a zip, up to 1 GB, streamed straight to its
