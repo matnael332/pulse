@@ -99,14 +99,14 @@ def _in_flight(db: Session, company: Company) -> bool:
     return bool(ingestion or run)
 
 
-def _ingestion(db: Session, company: Company, ingestion_id: str) -> Ingestion:
+def company_ingestion(db: Session, company: Company, ingestion_id: str) -> Ingestion:
     row = db.get(Ingestion, ingestion_id)
     if row is None or row.company_id != company.id:
         raise HTTPException(404, "no such upload")
     return row
 
 
-def _run(db: Session, company: Company, run_id: str) -> Run:
+def company_run(db: Session, company: Company, run_id: str) -> Run:
     run = db.get(Run, run_id)
     if run is None or run.company_id != company.id:
         raise HTTPException(404, "no such run")
@@ -222,7 +222,7 @@ async def upload(
 
 @router.get("/ingestions/{ingestion_id}")
 def get_ingestion(ingestion_id: str, company: ActiveCompany, db: Db) -> dict:
-    return ingestion_json(db, _ingestion(db, company, ingestion_id))
+    return ingestion_json(db, company_ingestion(db, company, ingestion_id))
 
 
 def _staged(settings: Settings, company: Company, row: Ingestion) -> Staged:
@@ -234,7 +234,7 @@ def _staged(settings: Settings, company: Company, row: Ingestion) -> Staged:
 
 @router.get("/ingestions/{ingestion_id}/review")
 def get_review(ingestion_id: str, company: ActiveCompany, db: Db, settings: Config) -> dict:
-    row = _ingestion(db, company, ingestion_id)
+    row = company_ingestion(db, company, ingestion_id)
     return review.view(_staged(settings, company, row), CONTRACT, row.flags)
 
 
@@ -260,7 +260,7 @@ class Fixes(BaseModel):
 def fix_mapping(
     ingestion_id: str, fixes: Fixes, company: ActiveCompany, db: Db, settings: Config
 ) -> dict:
-    row = _ingestion(db, company, ingestion_id)
+    row = company_ingestion(db, company, ingestion_id)
     staged = _staged(settings, company, row)
     try:
         row.flags = review.edit(
@@ -280,7 +280,7 @@ def fix_mapping(
 def approve(
     ingestion_id: str, company: ActiveCompany, user: CurrentUser, db: Db, settings: Config
 ) -> dict:
-    row = _ingestion(db, company, ingestion_id)
+    row = company_ingestion(db, company, ingestion_id)
     staged = _staged(settings, company, row)
     missing = review.blocking(staged.mapping, CONTRACT)
     if missing:
@@ -297,7 +297,7 @@ def approve(
 def discard(
     ingestion_id: str, company: ActiveCompany, user: CurrentUser, db: Db, settings: Config
 ) -> dict:
-    row = _ingestion(db, company, ingestion_id)
+    row = company_ingestion(db, company, ingestion_id)
     if row.status != "proposed":
         raise http_error(409, "not_reviewable", status=row.status)
     row.status = "discarded"
@@ -347,13 +347,13 @@ def list_runs(company: ActiveCompany, db: Db) -> dict:
 
 @router.get("/runs/{run_id}")
 def get_run(run_id: str, company: ActiveCompany, db: Db) -> dict:
-    return run_json(db, _run(db, company, run_id))
+    return run_json(db, company_run(db, company, run_id))
 
 
 @router.post("/runs/{run_id}/retry", status_code=201)
 def retry(run_id: str, company: ActiveCompany, user: CurrentUser, db: Db) -> dict:
     """A new run on the same data, after a failed one."""
-    failed = _run(db, company, run_id)
+    failed = company_run(db, company, run_id)
     if failed.status != "failed" or failed.ingestion.status != "applied":
         raise http_error(409, "not_retryable", status=failed.status)
     if _in_flight(db, company):
