@@ -186,7 +186,7 @@ def propose_values(
             )
             known, unknown = {}, []
             for value in seen:
-                canonical = _canonical(value, column)
+                canonical = canonical_value(value, column)
                 if canonical:
                     known[value] = canonical
                 else:
@@ -226,7 +226,7 @@ def source_values(tables: dict[str, pd.DataFrame], source: str, column: str) -> 
     return list(df[column].unique()) if df is not None and column in df else []
 
 
-def _canonical(value: str, column: TargetColumn) -> str | None:
+def canonical_value(value: str, column: TargetColumn) -> str | None:
     best, best_score = None, 0.0
     for canonical, spellings in column.value_synonyms.items():
         score = similarity(value, (canonical, *spellings))
