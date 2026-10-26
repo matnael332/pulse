@@ -136,6 +136,12 @@ def _sign_in(client, provider, name="google", next_path=None, **claims) -> httpx
     return client.get(provider.authorized(start.headers["location"], **claims))
 
 
+def assert_failed(response: httpx.Response, caplog, reason: str) -> None:
+    """Back to the site's sign-in page with no session; the reason is in the log only."""
+    assert response.status_code == 302 and response.headers["location"] == "/login?error=signin"
+    assert reason in caplog.text and reason not in response.text
+
+
 def test_the_login_redirect_carries_state_nonce_and_pkce(client):
     response = client.get("/auth/google/login")
     assert response.status_code == 302
@@ -156,14 +162,14 @@ def test_a_google_sign_in_starts_a_session(client, provider):
     assert me["is_operator"] and me["state"] == "operator"
 
 
-def test_a_microsoft_sign_in_checks_the_tenant_in_the_issuer(client, provider):
+def test_a_microsoft_sign_in_checks_the_tenant_in_the_issuer(client, provider, caplog):
     assert _sign_in(client, provider, "microsoft").status_code == 302
     me = client.get("/api/me").json()
     assert me["user"]["provider"] == "microsoft"
     assert not me["is_operator"]  # Microsoft's address is not verified without xms_edov
     client.cookies.clear()
     wrong = _sign_in(client, provider, "microsoft", iss=f"{MICROSOFT}/another-tenant/v2.0")
-    assert wrong.status_code == 400 and "issuer" in wrong.json()["detail"]
+    assert_failed(wrong, caplog, "issuer")
 
 
 def test_microsoft_with_a_verified_address_can_be_an_operator(client, provider):
@@ -187,25 +193,23 @@ def test_an_unverified_google_address_is_not_an_operator(client, provider):
         ({"email": None}, "email"),
     ],
 )
-def test_a_bad_id_token_is_refused(client, provider, claims, reason):
-    response = _sign_in(client, provider, **claims)
-    assert response.status_code == 400 and reason in response.json()["detail"]
+def test_a_bad_id_token_is_refused(client, provider, claims, reason, caplog):
+    assert_failed(_sign_in(client, provider, **claims), caplog, reason)
     assert client.get("/api/me").status_code == 401
 
 
-def test_a_token_signed_with_another_key_is_refused(client, provider):
+def test_a_token_signed_with_another_key_is_refused(client, provider, caplog):
     provider.signing_key = OTHER_KEY
-    response = _sign_in(client, provider)
-    assert response.status_code == 400 and "InvalidSignatureError" in response.json()["detail"]
+    assert_failed(_sign_in(client, provider), caplog, "InvalidSignatureError")
 
 
-def test_a_wrong_or_missing_state_is_refused(client, provider):
+def test_a_wrong_or_missing_state_is_refused(client, provider, caplog):
     start = client.get("/auth/google/login")
     callback = provider.authorized(start.headers["location"])
     forged = callback.replace("state=", "state=x")
-    assert client.get(forged).status_code == 400
+    assert_failed(client.get(forged), caplog, "state does not match")
     client.cookies.clear()  # no state cookie: the sign-in did not start in this browser
-    assert client.get(callback).status_code == 400
+    assert_failed(client.get(callback), caplog, "did not start here")
     assert client.get("/api/me").status_code == 401
 
 
@@ -223,8 +227,17 @@ def test_providers_lists_the_configured_ones(client):
     assert client.get("/api/auth/providers").json() == {"providers": ["google", "microsoft", "dev"]}
 
 
-def test_the_state_cookie_is_signed(client, provider, oidc_settings):
+def test_the_state_cookie_is_signed(client, provider, oidc_settings, caplog):
     client.get("/auth/google/login")
     tampered = json.dumps({"p": "google", "s": "x", "n": "y", "v": "z", "next": "/"})
     client.cookies.set("pulse_oidc", base64.urlsafe_b64encode(tampered.encode()).decode())
-    assert client.get("/auth/google/callback?code=c&state=x").status_code == 400
+    assert_failed(client.get("/auth/google/callback?code=c&state=x"), caplog, "did not start here")
+
+
+def test_an_unreachable_provider_sends_the_browser_back(oidc_settings, caplog):
+    upgrade(oidc_settings.database_url)
+    down = httpx.MockTransport(lambda request: httpx.Response(503))
+    with TestClient(create_app(oidc_settings, oidc_transport=down), follow_redirects=False) as c:
+        response = c.get("/auth/google/login")
+    assert response.headers["location"] == "/login?error=unavailable"
+    assert "google unavailable" in caplog.text
