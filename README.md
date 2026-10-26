@@ -106,6 +106,15 @@ the data and runs the pipeline; the site follows each stage and shows the summar
 it stopped, worded from a stable code in Hebrew or English. The same structure next month is
 approved by itself, unless it brings category spellings the mapping does not know.
 
+A finished run opens on its results. The overview: accounts per risk level, what the language
+model found and recommends (in the uploader's language), the accounts at risk with their names,
+probability and reasons (filter, search, a CSV for Excel), the risk distribution and the monthly
+cancellation rate, and notes on the data (groups missing, the windows, low confidence). The
+advanced tab: the model's quality against the others compared, what matters most, the model card
+and the evaluation and cleaning reports, the figures, and the company's runs. The results API
+(`/api/runs/{id}/results`, `/advanced`, `/docs/...`, `/figures/...`) serves only these, never the
+model, the clean data or the scored rows.
+
 A user signs in (`/auth/{google,microsoft}/login`, or `POST /api/auth/dev-login`), names their
 company (`POST /api/signup/company`) and waits; an operator (`PULSE_OPERATOR_EMAILS`, verified
 address) approves it (`POST /api/admin/companies/{id}/approve`), which creates the company's
