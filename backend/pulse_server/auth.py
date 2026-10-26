@@ -3,7 +3,8 @@
 Google and Microsoft: ``/auth/{provider}/login`` sends the browser to the provider with a fresh
 state, nonce and PKCE verifier kept in a signed, short-lived cookie; ``/callback`` checks the
 state, trades the code for the ID token, verifies it (``oidc``) and starts a session. Any failure
-answers 400 and starts nothing.
+starts nothing: the browser goes back to the site's sign-in page (``/login?error=...``) and the
+reason goes to the log, never to the page.
 
 The site's own calls live under ``/api/auth`` (providers, logout, the dev login); only the two
 browser navigations of a sign-in stay at ``/auth``, where the redirect URIs point.
@@ -15,10 +16,11 @@ settings refuse in production. It stands in for Google and Microsoft in tests an
 from __future__ import annotations
 
 import hmac
+import logging
 import secrets
 
 from fastapi import APIRouter, HTTPException, Request, Response
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -31,8 +33,10 @@ from pulse_server.security import audit, safe_next, sign_in, sign_out
 from pulse_server.settings import Settings
 
 STATE_COOKIE = "pulse_oidc"
+LOGIN_PAGE = "/login"
 STATE_SECONDS = 600
 
+log = logging.getLogger("pulse_server.auth")
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 dev_router = APIRouter(prefix="/api/auth", tags=["auth"])
 browser_router = APIRouter(prefix="/auth", tags=["auth"])
@@ -85,7 +89,7 @@ def login(provider: str, request: Request, settings: Config, next: str | None = 
             found, _redirect_uri(settings, provider), state, nonce, challenge
         )
     except OidcError as exc:
-        return JSONResponse({"detail": f"sign-in unavailable: {exc}"}, 502)
+        return _failed(f"{provider} unavailable: {exc}", "unavailable")
     response = RedirectResponse(url, 302)
     signed = _state_signer(settings).dumps(
         {"p": provider, "s": state, "n": nonce, "v": verifier, "next": safe_next(next)}
@@ -138,8 +142,9 @@ def callback(
     return response
 
 
-def _failed(reason: str) -> JSONResponse:
-    response = JSONResponse({"detail": f"sign-in failed: {reason}"}, 400)
+def _failed(reason: str, error: str = "signin") -> RedirectResponse:
+    log.warning("sign-in failed: %s", reason)
+    response = RedirectResponse(f"{LOGIN_PAGE}?error={error}", 302)
     response.delete_cookie(STATE_COOKIE, path="/auth/")
     return response
 
