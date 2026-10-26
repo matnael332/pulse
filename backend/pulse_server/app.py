@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
 
-from pulse_server import account, admin, auth, uploads
+from pulse_server import account, admin, auth, results, uploads
 from pulse_server.db import make_engine
 from pulse_server.oidc import OidcClient
 from pulse_server.security import guard
@@ -40,6 +40,7 @@ def create_app(
     app.include_router(account.router)
     app.include_router(admin.router)
     app.include_router(uploads.router)
+    app.include_router(results.router)
 
     @app.get("/health")
     def health(request: Request):
