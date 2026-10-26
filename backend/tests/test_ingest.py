@@ -25,9 +25,7 @@ from pulse_specs.workforce_saas.preflight import preflight
 from pulse_specs.workforce_saas.scramble import scramble
 from pulse_specs.workforce_saas.spec import SPEC, make_spec
 from pulse_specs.workforce_saas.synth import SynthConfig, write_dataset
-
-CLEAN = SynthConfig(accounts=80, dirt=0.0)  # no planted dirt: the round trip must be exact
-PERSONAL = ("שם עובד", "ת.ז.", "טלפון")
+from tests.conftest import PERSONAL
 
 
 def _ingest(zip_path: Path, customer: Path, **kwargs) -> tuple[str, dict]:
@@ -37,14 +35,17 @@ def _ingest(zip_path: Path, customer: Path, **kwargs) -> tuple[str, dict]:
 
 
 @pytest.fixture(scope="module")
-def ingested(tmp_path_factory):
+def ingested(tmp_path_factory, scrambled_export):
     base = tmp_path_factory.mktemp("ingest")
-    raw = write_dataset(base / "synth", CLEAN)
-    export = scramble(raw, base / "export.zip", rows_per_sheet=30_000)
     customer = base / "customer"
-    ingestion, result = _ingest(export, customer)
+    ingestion, result = _ingest(scrambled_export.export, customer)
     return SimpleNamespace(
-        base=base, raw=raw, export=export, customer=customer, ingestion=ingestion, result=result
+        base=base,
+        raw=scrambled_export.raw,
+        export=scrambled_export.export,
+        customer=customer,
+        ingestion=ingestion,
+        result=result,
     )
 
 
@@ -53,7 +54,7 @@ def ingested(tmp_path_factory):
 
 def test_the_scrambled_export_comes_back_as_the_same_clean_table(ingested):
     original = ingested.base / "original"
-    run_analyst_stage(SPEC, ingested.raw, ingested.base / "synth" / "lookups", original)
+    run_analyst_stage(SPEC, ingested.raw, ingested.raw.parent / "lookups", original)
     data = ingested.result["data_dir"]
     spec = make_spec(**read_json(data / "spec_params.json"))
     again = ingested.base / "again"
