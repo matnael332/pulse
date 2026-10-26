@@ -206,3 +206,79 @@ export const discardIngestion = (id: string) =>
 export const listRuns = () => api<{ runs: RunInfo[] }>("/runs");
 export const getRun = (id: string) => api<RunInfo>(`/runs/${id}`);
 export const retryRun = (id: string) => api<RunInfo>(`/runs/${id}/retry`, { method: "POST" });
+
+export interface Reason {
+  code: string;
+  feature: string;
+  value: number;
+  typical: number;
+  contribution: number;
+}
+
+export interface ScoredAccount {
+  id: string;
+  customer_id: string;
+  name: string;
+  level: "high" | "elevated" | "normal";
+  probability: number;
+  rank: number;
+  reasons: Reason[];
+}
+
+export interface Results {
+  run: {
+    id: string;
+    demo: boolean;
+    language: Lang;
+    mode: string | null;
+    finished_at: string | null;
+  };
+  summary: RunSummary | null;
+  accounts: ScoredAccount[];
+  distribution: {
+    levels: Record<string, number>;
+    histogram: { from: number; to: number; count: number }[];
+  };
+  trend: { month: string; rate: number | null; rows: number | null }[];
+  key_numbers: { label: string; value: number }[];
+  insights: {
+    headline?: string | null;
+    key_findings?: { title: string; evidence: string; business_meaning: string }[] | null;
+    recommendations?: string[] | null;
+    data_caveats?: string[] | null;
+    source?: string | null;
+    language?: string | null;
+  };
+  groups: { present?: string[]; missing?: string[]; core?: string[]; accuracy_cost?: unknown };
+  data: {
+    snapshot_date?: string | null;
+    train_start?: string | null;
+    windows?: Record<string, [string, string]> | null;
+    cancellations?: { train: number; test: number } | null;
+    low_confidence?: boolean | null;
+    accounts?: number | null;
+  };
+}
+
+export interface Advanced {
+  selected_model: string | null;
+  selection: { rule?: string; selected?: string };
+  split: Record<string, { dates?: [string, string]; rows?: number; prevalence?: number }>;
+  threshold: number | null;
+  candidates: Record<
+    string,
+    { description: string; test: Record<string, number | null>; cv: Record<string, number> }
+  >;
+  importance: { feature: string; importance_mean: number; description: string }[];
+  figures: string[];
+  docs: string[];
+}
+
+export const getResults = (id: string) => api<Results>(`/runs/${id}/results`);
+export const getAdvanced = (id: string) => api<Advanced>(`/runs/${id}/advanced`);
+export async function getDoc(id: string, name: string): Promise<string> {
+  const response = await fetch(`/api/runs/${id}/docs/${name}`, { credentials: "same-origin" });
+  if (!response.ok) throw new ApiError(response.status, response.statusText);
+  return response.text();
+}
+export const figureUrl = (id: string, name: string) => `/api/runs/${id}/figures/${name}`;
