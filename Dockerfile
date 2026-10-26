@@ -1,4 +1,4 @@
-# One image for our server: the pipeline, the dashboard and the API.
+# One image for our server: the pipeline, the dashboard, the API and the site's server.
 # compose.yaml runs it; DEPLOY.md explains the server side. Customer data never enters the image:
 # it lives in the /srv/pulse volume, one folder per customer (customers/<slug>/, laid out as in
 # backend/pulse_ingest/layout.py: data/<ingestion>/, runs/, artifacts/, ...).
@@ -41,6 +41,6 @@ RUN useradd --create-home --uid 1000 pulse \
     && chown -R pulse:pulse /srv/pulse
 USER pulse
 
-EXPOSE 8501 8000
+EXPOSE 8501 8000 8100
 
 CMD ["streamlit", "run", "frontend/streamlit_app.py", "--server.address=0.0.0.0", "--server.port=8501"]
