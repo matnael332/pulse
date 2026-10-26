@@ -20,13 +20,11 @@ BACKEND = Path(__file__).resolve().parents[1]
 
 
 @pytest.fixture()
-def settings(server_settings, tmp_path, monkeypatch):
+def settings(server_settings, monkeypatch):
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.setenv("PYTHONPATH", str(BACKEND))  # the fake pipeline lives in tests/
     monkeypatch.delenv("FAKE_PIPELINE", raising=False)
-    return server_settings.model_copy(
-        update={"work_dir": tmp_path / "var", "worker_poll_seconds": 0.05}
-    )
+    return server_settings
 
 
 @pytest.fixture()
