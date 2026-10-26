@@ -178,7 +178,10 @@ class Worker:
     def _propose(self, db: Session, job: Job) -> None:
         ingestion = db.get(Ingestion, job.ingestion_id)
         folder = self._folder(db, ingestion)
-        source = self.demo_export if ingestion.demo else folder.uploads(ingestion.id) / "export.zip"
+        if ingestion.demo:
+            source = self.ensure_demo_export()
+        else:
+            source = folder.uploads(ingestion.id) / "export.zip"
         args = {
             "customer_dir": str(folder.root),
             "ingestion": ingestion.id,

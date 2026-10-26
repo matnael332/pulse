@@ -152,3 +152,33 @@ def test_a_failed_run_can_be_retried(server, server_settings, company, worker, m
     drain(worker)
     assert server.get(f"/api/runs/{again.json()['id']}").json()["status"] == "succeeded"
     login(server, "owner@acme.example")
+
+
+def test_the_demo_runs_apart_and_a_real_upload_replaces_it(
+    server, server_settings, company, worker, scrambled_export
+):
+    cached = server_settings.work_dir / "demo" / "export-v1.zip"  # built once per server
+    cached.parent.mkdir(parents=True)
+    cached.write_bytes(scrambled_export.export.read_bytes())
+    demo = server.post("/api/demo", json={"language": "en"})
+    assert demo.status_code == 201 and demo.json()["demo"]
+    drain(worker)
+    url = f"/api/ingestions/{demo.json()['id']}"
+    assert server.post(f"{url}/approve").status_code == 200
+    drain(worker)
+    run = server.get(f"/api/runs/{server.get(url).json()['run_id']}").json()
+    assert run["status"] == "succeeded" and run["demo"] and run["language"] == "en"
+    root = CustomerDir(server_settings.customers_root / "acme").root
+    assert (root / "demo" / "entity_map.csv").exists() and not (root / "entity_map.csv").exists()
+    mine = server.get("/api/company").json()
+    assert mine["latest_run"]["demo"] and not mine["has_real_data"]
+
+    real = send(server, scrambled_export.export.read_bytes())
+    assert real.status_code == 201
+    assert server.get(url).status_code == 404 and not (root / "demo").exists()
+    assert server.get("/api/runs").json()["runs"] == []
+    drain(worker)  # proposed: the demo's approved mapping is not this folder's
+    assert server.get(f"/api/ingestions/{real.json()['id']}").json()["status"] == "proposed"
+    assert server.post(f"/api/ingestions/{real.json()['id']}/approve").status_code == 200
+    drain(worker)
+    assert server.post("/api/demo", json={}).json()["detail"]["code"] == "demo_unavailable"
