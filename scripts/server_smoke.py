@@ -41,6 +41,13 @@ class Client:
             status, raw = exc.code, exc.read()
         return status, json.loads(raw) if raw else {}
 
+    def raw(self, path: str) -> tuple[int, bytes]:
+        try:
+            with self.opener.open(self.base + path, timeout=10) as response:
+                return response.status, response.read()
+        except urllib.error.HTTPError as exc:
+            return exc.code, exc.read()
+
     def login(self, email: str) -> None:
         self.cookies.clear()
         expect(
@@ -93,6 +100,20 @@ def demo(client: Client) -> None:
     if not run["summary"] or run["summary"]["accounts"] <= 0:
         raise SystemExit(f"FAIL the run scored no accounts: {run['summary']}")
     print(f"     {run['summary']}")
+    results = expect(client.call("GET", f"/api/runs/{run['id']}/results"), 200, "the results")
+    if not any(a["name"] for a in results["accounts"]):
+        raise SystemExit("FAIL no account has a name (the entity map was not joined)")
+    advanced = expect(client.call("GET", f"/api/runs/{run['id']}/advanced"), 200, "advanced")
+    status, image = client.raw(f"/api/runs/{run['id']}/figures/{advanced['figures'][0]}")
+    if status != 200 or not image.startswith(bytes.fromhex("89504e47")):  # a PNG
+        raise SystemExit(f"FAIL the figure: HTTP {status}")
+    status, card = client.raw(f"/api/runs/{run['id']}/docs/model_card")
+    if status != 200 or not card.startswith(b"#"):
+        raise SystemExit(f"FAIL the model card: HTTP {status}")
+    status, _ = client.raw(f"/api/runs/{run['id']}/figures/model.joblib")
+    if status != 404:
+        raise SystemExit(f"FAIL the model file is served: HTTP {status}")
+    print("ok   a figure, the model card, and never the model file")
 
 
 def main(base: str, with_demo: bool = False) -> int:
