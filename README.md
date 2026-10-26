@@ -16,9 +16,10 @@ within 60 days): `backend/pulse_specs/workforce_saas/` holds the schema (`SCHEMA
 synthetic generator (`uv run synth`, `SYNTH.md`) and the spec (`spec.py`), and the pipeline runs
 on it end to end in deterministic mode. The product is a hosted service: customers upload an
 export and run the pipeline on our server, one folder per customer (`--data-dir`, `--runs-dir`,
-`--artifacts-dir`, `--run-id`). One Docker image runs the pipeline, the dashboard and the API on
-that server (`Dockerfile`, `compose.yaml`, `DEPLOY.md`). Next step: the site layer (login, upload,
-run, dashboard).
+`--artifacts-dir`, `--run-id`). One Docker image runs the pipeline, the dashboard, the API and
+the site's server on that server (`Dockerfile`, `compose.yaml`, `DEPLOY.md`). The site's backend
+(`pulse_server`) signs companies in with Google or Microsoft and lets an operator approve them;
+next: the web site itself, then upload and run from the site.
 
 ## How it runs
 
@@ -52,7 +53,7 @@ honour.
 ```bash
 uv sync                                                            # Python 3.13 + locked deps
 uv run ruff check . && uv run ruff format --check .
-uv run pytest                                                      # 127 tests: toy spec, generator, workforce_saas spec, ingestion
+uv run pytest                                                      # 177 tests: toy spec, generator, workforce_saas spec, ingestion, server
 uv run synth --data-dir data                                       # workforce_saas raw data: 200 accounts, ~145 MB, < 1 min
 uv run python -m pulse_flow.run --no-llm --spec pulse_specs.workforce_saas.spec:SPEC --data-dir data   # full run, promotes to artifacts/
 uv run python -m pulse_flow.run --no-llm --spec tests.toy_spec:SPEC --data-dir <toy data> --no-promote
@@ -73,6 +74,19 @@ uv run pulse-ingest approve --customer-dir customer --ingestion <id>
 uv run pulse-ingest apply   --customer-dir customer --ingestion <id>          # prints the pipeline command
 ```
 
+The site's backend runs on its own (port 8100). Locally it uses a SQLite file in `var/` and
+customer folders in `customers/`; the dev login stands in for Google and Microsoft:
+
+```bash
+PULSE_ENV=development PULSE_DEV_LOGIN=1 PULSE_OPERATOR_EMAILS=ops@example.com   uv run pulse-server serve --migrate                              # http://127.0.0.1:8100/docs
+python scripts/server_smoke.py                                     # signup -> approval, end to end
+```
+
+A user signs in (`/auth/{google,microsoft}/login`, or `POST /auth/dev-login`), names their company
+(`POST /signup/company`) and waits; an operator (`PULSE_OPERATOR_EMAILS`, verified address) approves
+it (`POST /admin/companies/{id}/approve`), which creates the company's customer folder. `/me` says
+where a user stands. `.env.example` lists the `PULSE_*` settings.
+
 The same inside Docker, on the server volume (`DEPLOY.md` has the full guide; CI runs these):
 
 ```bash
@@ -81,7 +95,7 @@ docker compose run --rm job synth --data-dir /srv/pulse/customers/demo/data/synt
 docker compose run --rm job python -m pulse_flow.run --no-llm --spec pulse_specs.workforce_saas.spec:SPEC \
   --data-dir /srv/pulse/customers/demo/data/synth --runs-dir /srv/pulse/customers/demo/runs \
   --artifacts-dir /srv/pulse/customers/demo/artifacts
-docker compose up -d                                               # dashboard :8501, API :8000 (localhost only)
+docker compose up -d                                               # dashboard :8501, API :8000, server :8100 + Postgres (localhost only; .env needs PULSE_SECRET_KEY)
 ```
 
 The toy data folder is written by `tests.toy_spec.write_raw(<dir>/raw)`; the test suite does this
@@ -116,10 +130,13 @@ backend/
                      batch scoring
   pulse_copilot/     Ops copilot: read-only tools, the Gemini loop, instant answers
   pulse_ingest/      ingestion: safe unzip, readers (Excel, cp1255), profile, mapping (rules + LLM on
-                     names only), normalisation, pseudonyms, the pulse-ingest CLI
+                     names only), normalisation, pseudonyms, the pulse-ingest CLI, the customer
+                     folder layout (layout.py)
+  pulse_server/      the site's backend (FastAPI): Google/Microsoft sign-in, sessions, companies
+                     and the operator's approval; SQLAlchemy + Alembic (Postgres, SQLite locally)
   tests/             tests + toy_spec.py (the synthetic DatasetSpec they run on)
 frontend/            Streamlit dashboard (reads artifacts/ only): copilot, model, contract, runs
-scripts/             repository hygiene check
+scripts/             repository hygiene check, the server's smoke test
 Dockerfile           the server image; compose.yaml runs it, DEPLOY.md explains the server
 ```
 
