@@ -13,6 +13,7 @@ commands on every push, so they are known to work.
 | `api` service | prediction API on port 8000, always up |
 | `server` service | the site (`pulse-server`) on port 8100: the web pages and their API, sign-in, companies, the operator's approval; migrates the database on start |
 | `postgres` service | the server's database (Postgres 17); publishes no port |
+| `worker` service | the site's worker (`pulse-server worker`): reads uploads, prepares the data and runs the pipeline, one job at a time (6 GB memory limit); builds the demo export on its first start |
 | `job` service | runs a command on demand (`synth`, the pipeline); not started by `up` |
 | `pulse-data` volume | all customer data, one folder per customer: `/srv/pulse/customers/<slug>/` |
 | `pulse-db` volume | the server's database: users, companies, sessions, the audit log |
@@ -77,7 +78,7 @@ docker compose run --rm job python -m pulse_flow.run --no-llm \
   --spec pulse_specs.workforce_saas.spec:SPEC \
   --data-dir $C/data/synth --runs-dir $C/runs --artifacts-dir $C/artifacts
 docker compose up -d
-docker compose ps                   # dashboard, api, server and postgres: healthy
+docker compose ps                   # dashboard, api, server, postgres healthy; worker running
 ```
 
 `$C` expands on the server, and the path is the same inside the container (the volume is
@@ -110,18 +111,18 @@ different origin and its writes are refused) and that redirect URI registered wi
 | New run for a customer | the `pulse_flow.run` command above with that customer's `C`, then `docker compose restart api` (the API loads the model at start; the dashboard picks up new files by itself) |
 | Show another customer | set `PULSE_CUSTOMER=<slug>` in `.env`, then `docker compose up -d` |
 | Update to a new version | `git pull && docker compose up -d --build` |
-| Logs | `docker compose logs -f dashboard api server` |
+| Logs | `docker compose logs -f dashboard api server worker` (a job's own log: `/srv/pulse/work/jobs/<job id>.log` in the volume) |
 | Approve a company | sign in to the site with an operator's address: it opens on the companies screen |
 | Back up the server's database | `docker compose exec -T postgres pg_dump -U pulse pulse > pulse-db-$(date +%F).sql` |
 | Back up all customer data | `docker run --rm -v pulse_pulse-data:/srv/pulse -v "$PWD":/backup busybox tar czf /backup/pulse-data-$(date +%F).tgz -C /srv pulse` |
 | Stop | `docker compose down` (the volume stays; `down -v` deletes it with all customer data) |
 
 The compose project is named `pulse`, so the volumes are always `pulse_pulse-data` and
-`pulse_pulse-db`, and the containers `pulse-dashboard-1`, `pulse-api-1`, `pulse-server-1` and
-`pulse-postgres-1`, whatever the folder is called.
+`pulse_pulse-db`, and the containers `pulse-dashboard-1`, `pulse-api-1`, `pulse-server-1`,
+`pulse-worker-1` and `pulse-postgres-1`, whatever the folder is called.
 
 ## Not yet (the rest of step 6)
 
-The web site on top of the server, uploading a customer's export and a "run" button, HTTPS and a
-domain, and a managed database. Until then customer data is copied into the volume by hand and
-runs are started from the shell.
+The full results screen (the risk list with names and reasons, charts, the advanced tab), HTTPS
+and a domain, and a managed database. Companies upload and run from the site; the shell commands
+above remain for the operator.
