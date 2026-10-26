@@ -40,7 +40,9 @@ class Client:
 
     def login(self, email: str) -> None:
         self.cookies.clear()
-        expect(self.call("POST", "/auth/dev-login", {"email": email}), 204, f"dev login {email}")
+        expect(
+            self.call("POST", "/api/auth/dev-login", {"email": email}), 204, f"dev login {email}"
+        )
 
 
 def expect(answer: tuple[int, dict], status: int, step: str) -> dict:
@@ -57,23 +59,23 @@ def main(base: str) -> int:
     if health.get("db") != "ok":
         raise SystemExit(f"FAIL health: {health}")
     client.login(OWNER)
-    me = expect(client.call("GET", "/me"), 200, "me")
+    me = expect(client.call("GET", "/api/me"), 200, "me")
     if me["state"] != "needs_company":
         raise SystemExit(f"FAIL a new user should need a company: {me['state']}")
-    company = expect(client.call("POST", "/signup/company", {"name": "Acme"}), 201, "signup")
-    expect(client.call("GET", "/company"), 403, "a pending company is not active")
+    company = expect(client.call("POST", "/api/signup/company", {"name": "Acme"}), 201, "signup")
+    expect(client.call("GET", "/api/company"), 403, "a pending company is not active")
     client.login(OPERATOR)
-    pending = expect(client.call("GET", "/admin/companies?status=pending"), 200, "pending list")
+    pending = expect(client.call("GET", "/api/admin/companies?status=pending"), 200, "pending list")
     if company["id"] not in [c["id"] for c in pending["companies"]]:
         raise SystemExit("FAIL the new company is not in the pending list")
-    path = f"/admin/companies/{company['id']}/approve"
+    path = f"/api/admin/companies/{company['id']}/approve"
     approved = expect(client.call("POST", path, {"slug": "acme"}), 200, "approve")
     if approved["slug"] != "acme" or approved["status"] != "active":
         raise SystemExit(f"FAIL approval: {approved}")
     client.login(OWNER)
-    if expect(client.call("GET", "/me"), 200, "me again")["state"] != "active":
+    if expect(client.call("GET", "/api/me"), 200, "me again")["state"] != "active":
         raise SystemExit("FAIL the company should be active")
-    expect(client.call("GET", "/company"), 200, "the active company")
+    expect(client.call("GET", "/api/company"), 200, "the active company")
     print("server smoke test passed")
     return 0
 

@@ -23,9 +23,9 @@ def create_app(
     development = settings.env == "development"
     app = FastAPI(
         title="pulse server",
-        docs_url="/docs" if development else None,
+        docs_url="/api/docs" if development else None,
         redoc_url=None,
-        openapi_url="/openapi.json" if development else None,
+        openapi_url="/api/openapi.json" if development else None,
     )
     app.state.settings = settings
     app.state.engine = make_engine(settings.database_url)
@@ -33,6 +33,7 @@ def create_app(
     app.state.oidc = OidcClient(oidc_transport)
     app.middleware("http")(guard)
     app.include_router(auth.router)
+    app.include_router(auth.browser_router)
     if settings.dev_login:
         app.include_router(auth.dev_router)
     app.include_router(account.router)

@@ -78,14 +78,17 @@ The site's backend runs on its own (port 8100). Locally it uses a SQLite file in
 customer folders in `customers/`; the dev login stands in for Google and Microsoft:
 
 ```bash
-PULSE_ENV=development PULSE_DEV_LOGIN=1 PULSE_OPERATOR_EMAILS=ops@example.com   uv run pulse-server serve --migrate                              # http://127.0.0.1:8100/docs
+PULSE_ENV=development PULSE_DEV_LOGIN=1 PULSE_OPERATOR_EMAILS=ops@example.com \
+  uv run pulse-server serve --migrate                              # http://127.0.0.1:8100/api/docs
 python scripts/server_smoke.py                                     # signup -> approval, end to end
 ```
 
-A user signs in (`/auth/{google,microsoft}/login`, or `POST /auth/dev-login`), names their company
-(`POST /signup/company`) and waits; an operator (`PULSE_OPERATOR_EMAILS`, verified address) approves
-it (`POST /admin/companies/{id}/approve`), which creates the company's customer folder. `/me` says
-where a user stands. `.env.example` lists the `PULSE_*` settings.
+A user signs in (`/auth/{google,microsoft}/login`, or `POST /api/auth/dev-login`), names their
+company (`POST /api/signup/company`) and waits; an operator (`PULSE_OPERATOR_EMAILS`, verified
+address) approves it (`POST /api/admin/companies/{id}/approve`), which creates the company's
+customer folder. `/api/me` says where a user stands. The site calls everything under `/api`; only
+the sign-in's browser navigations (`/auth/...`) and `/health` live outside it. `.env.example`
+lists the `PULSE_*` settings.
 
 The same inside Docker, on the server volume (`DEPLOY.md` has the full guide; CI runs these):
 

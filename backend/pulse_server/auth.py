@@ -5,6 +5,9 @@ state, nonce and PKCE verifier kept in a signed, short-lived cookie; ``/callback
 state, trades the code for the ID token, verifies it (``oidc``) and starts a session. Any failure
 answers 400 and starts nothing.
 
+The site's own calls live under ``/api/auth`` (providers, logout, the dev login); only the two
+browser navigations of a sign-in stay at ``/auth``, where the redirect URIs point.
+
 The dev login (any address, no password) exists only when PULSE_DEV_LOGIN is on, which the
 settings refuse in production. It stands in for Google and Microsoft in tests and on a laptop.
 """
@@ -30,8 +33,9 @@ from pulse_server.settings import Settings
 STATE_COOKIE = "pulse_oidc"
 STATE_SECONDS = 600
 
-router = APIRouter(prefix="/auth", tags=["auth"])
-dev_router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/api/auth", tags=["auth"])
+dev_router = APIRouter(prefix="/api/auth", tags=["auth"])
+browser_router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def upsert_user(
@@ -69,7 +73,7 @@ def list_providers(settings: Config) -> dict:
     return {"providers": names + (["dev"] if settings.dev_login else [])}
 
 
-@router.get("/{provider}/login")
+@browser_router.get("/{provider}/login")
 def login(provider: str, request: Request, settings: Config, next: str | None = None):
     found = providers(settings).get(provider)
     if found is None:
@@ -98,7 +102,7 @@ def login(provider: str, request: Request, settings: Config, next: str | None = 
     return response
 
 
-@router.get("/{provider}/callback")
+@browser_router.get("/{provider}/callback")
 def callback(
     provider: str,
     request: Request,

@@ -151,14 +151,14 @@ def test_the_login_redirect_carries_state_nonce_and_pkce(client):
 def test_a_google_sign_in_starts_a_session(client, provider):
     response = _sign_in(client, provider, next_path="/company")
     assert response.status_code == 302 and response.headers["location"] == "/company"
-    me = client.get("/me").json()
+    me = client.get("/api/me").json()
     assert me["user"]["email"] == "dana@acme.example" and me["user"]["provider"] == "google"
     assert me["is_operator"] and me["state"] == "operator"
 
 
 def test_a_microsoft_sign_in_checks_the_tenant_in_the_issuer(client, provider):
     assert _sign_in(client, provider, "microsoft").status_code == 302
-    me = client.get("/me").json()
+    me = client.get("/api/me").json()
     assert me["user"]["provider"] == "microsoft"
     assert not me["is_operator"]  # Microsoft's address is not verified without xms_edov
     client.cookies.clear()
@@ -168,12 +168,12 @@ def test_a_microsoft_sign_in_checks_the_tenant_in_the_issuer(client, provider):
 
 def test_microsoft_with_a_verified_address_can_be_an_operator(client, provider):
     _sign_in(client, provider, "microsoft", xms_edov=True)
-    assert client.get("/me").json()["is_operator"]
+    assert client.get("/api/me").json()["is_operator"]
 
 
 def test_an_unverified_google_address_is_not_an_operator(client, provider):
     _sign_in(client, provider, email_verified=False)
-    me = client.get("/me").json()
+    me = client.get("/api/me").json()
     assert not me["is_operator"] and me["state"] == "needs_company"
 
 
@@ -190,7 +190,7 @@ def test_an_unverified_google_address_is_not_an_operator(client, provider):
 def test_a_bad_id_token_is_refused(client, provider, claims, reason):
     response = _sign_in(client, provider, **claims)
     assert response.status_code == 400 and reason in response.json()["detail"]
-    assert client.get("/me").status_code == 401
+    assert client.get("/api/me").status_code == 401
 
 
 def test_a_token_signed_with_another_key_is_refused(client, provider):
@@ -206,7 +206,7 @@ def test_a_wrong_or_missing_state_is_refused(client, provider):
     assert client.get(forged).status_code == 400
     client.cookies.clear()  # no state cookie: the sign-in did not start in this browser
     assert client.get(callback).status_code == 400
-    assert client.get("/me").status_code == 401
+    assert client.get("/api/me").status_code == 401
 
 
 def test_next_never_leaves_the_site(client, provider):
@@ -216,11 +216,11 @@ def test_next_never_leaves_the_site(client, provider):
 
 def test_unconfigured_providers(server):
     assert server.get("/auth/google/login").status_code == 404
-    assert server.get("/auth/providers").json() == {"providers": ["dev"]}
+    assert server.get("/api/auth/providers").json() == {"providers": ["dev"]}
 
 
 def test_providers_lists_the_configured_ones(client):
-    assert client.get("/auth/providers").json() == {"providers": ["google", "microsoft", "dev"]}
+    assert client.get("/api/auth/providers").json() == {"providers": ["google", "microsoft", "dev"]}
 
 
 def test_the_state_cookie_is_signed(client, provider, oidc_settings):
