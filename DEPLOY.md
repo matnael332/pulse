@@ -12,7 +12,11 @@ commands on every push, so they are known to work.
 | `dashboard` service | Streamlit on port 8501, always up |
 | `api` service | prediction API on port 8000, always up |
 | `job` service | runs a command on demand (`synth`, the pipeline); not started by `up` |
-| `pulse-data` volume | all customer data: `/srv/pulse/customers/<slug>/{data,runs,artifacts}` |
+| `pulse-data` volume | all customer data, one folder per customer: `/srv/pulse/customers/<slug>/` |
+
+A customer's folder holds `data/<ingestion>/` (one data folder per upload; the synthetic demo is
+the ingestion `synth`), `runs/`, `artifacts/` (the last promoted run), `mappings/`,
+`entity_map.csv` and `secret.key`; `backend/pulse_ingest/layout.py` is the reference.
 
 The image holds code only. Customer data, runs and models live in the volume, so rebuilding or
 updating the image never touches them. `PULSE_CUSTOMER` (in `.env`, default `demo`) picks the
@@ -55,10 +59,10 @@ docker compose build                # first build takes a few minutes
 
 ```bash
 C=/srv/pulse/customers/demo
-docker compose run --rm job synth --data-dir $C/data
+docker compose run --rm job synth --data-dir $C/data/synth
 docker compose run --rm job python -m pulse_flow.run --no-llm \
   --spec pulse_specs.workforce_saas.spec:SPEC \
-  --data-dir $C/data --runs-dir $C/runs --artifacts-dir $C/artifacts
+  --data-dir $C/data/synth --runs-dir $C/runs --artifacts-dir $C/artifacts
 docker compose up -d
 docker compose ps                   # dashboard and api: healthy
 ```
@@ -66,6 +70,12 @@ docker compose ps                   # dashboard and api: healthy
 `$C` expands on the server, and the path is the same inside the container (the volume is
 mounted at `/srv/pulse`). Exit code 0 means the run passed the three gates and was promoted to
 `$C/artifacts`; 1 means a graceful failure (`$C/runs/<id>/run_status.json` says why).
+
+A real customer's export goes through the ingestion first. Copy the zip into the volume (for
+example `docker compose cp export.zip dashboard:/srv/pulse/`), run `pulse-ingest propose`,
+`approve` and `apply` with `--customer-dir $C` through `docker compose run --rm job`, then the
+pipeline command `apply` prints, with `docker compose run --rm job python` in place of its
+leading `uv run python`.
 
 ## 5. Open the dashboard
 

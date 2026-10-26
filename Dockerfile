@@ -1,6 +1,7 @@
 # One image for our server: the pipeline, the dashboard and the API.
 # compose.yaml runs it; DEPLOY.md explains the server side. Customer data never enters the image:
-# it lives in the /srv/pulse volume, one folder per customer (customers/<slug>/{data,runs,artifacts}).
+# it lives in the /srv/pulse volume, one folder per customer (customers/<slug>/, laid out as in
+# backend/pulse_ingest/layout.py: data/<ingestion>/, runs/, artifacts/, ...).
 
 FROM python:3.13-slim-bookworm
 
