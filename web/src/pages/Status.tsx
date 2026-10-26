@@ -6,9 +6,9 @@ import { useI18n } from "../i18n";
 import { useSession } from "../session";
 
 const LOOK = {
-  pending: { icon: IconHourglassHigh, color: "accent" },
+  pending: { icon: IconHourglassHigh, color: "gray" },
   rejected: { icon: IconMoodSad, color: "gray" },
-  suspended: { icon: IconLock, color: "orange" },
+  suspended: { icon: IconLock, color: "red" },
 } as const;
 
 /** Where a company that cannot use the product yet stands: pending, rejected or suspended. */

@@ -141,7 +141,7 @@ export function AdvancedTab({ runId }: { runId: string }) {
                 feature: f.feature,
                 importance: f.importance_mean,
               }))}
-              series={[{ name: "importance", color: "accent.5" }]}
+              series={[{ name: "importance", color: "gray.0" }]}
               valueFormatter={(v) => v.toFixed(3)}
             />
           </div>

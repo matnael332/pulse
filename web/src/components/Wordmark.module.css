@@ -1,0 +1,7 @@
+.mark {
+  font-family: var(--pulse-font-display);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  color: var(--pulse-ink);
+}

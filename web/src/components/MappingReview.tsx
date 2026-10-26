@@ -78,7 +78,7 @@ export function MappingReview({
           <Text fw={600}>{t("review.groups")}</Text>
           <Group gap="xs">
             {review.groups.present.map((g) => (
-              <Badge key={g} variant="light" color="teal" tt="none" size="lg">
+              <Badge key={g} variant="light" color="gray" tt="none" size="lg">
                 {label.group(g, lang)}
               </Badge>
             ))}
@@ -105,7 +105,7 @@ export function MappingReview({
                   <Badge
                     size="sm"
                     variant="light"
-                    color={item.reason === "missing" ? "red" : "yellow"}
+                    color={item.reason === "missing" ? "red" : "gray"}
                     tt="none"
                   >
                     {item.reason === "missing" ? t("review.missingColumn") : t("review.uncertain")}

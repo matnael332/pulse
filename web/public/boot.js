@@ -1,5 +1,5 @@
-// Runs before the page paints: the saved or the browser's language sets <html lang dir>, and the
-// saved colour scheme (or the system's) sets Mantine's attribute, so nothing flips after load.
+// Runs before the page paints: the saved or the browser's language sets <html lang dir>, so the
+// page never flips after load. (The colour scheme is fixed: the site is dark only.)
 (function () {
   var html = document.documentElement;
   var lang = null;
@@ -12,12 +12,4 @@
   }
   html.lang = lang;
   html.dir = lang === "he" ? "rtl" : "ltr";
-  var scheme = null;
-  try {
-    scheme = localStorage.getItem("mantine-color-scheme-value");
-  } catch (e) {}
-  if (scheme !== "light" && scheme !== "dark") {
-    scheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  }
-  html.setAttribute("data-mantine-color-scheme", scheme);
 })();

@@ -115,7 +115,7 @@ export function Home() {
           <Card className="hairline">
             <Stack gap="md" h="100%" justify="space-between">
               <Group align="flex-start" wrap="nowrap" gap="lg">
-                <ThemeIcon size={48} radius="md" variant="light" color="grape">
+                <ThemeIcon size={48} radius="md" variant="light" color="gray">
                   <IconFlask size={26} stroke={1.5} />
                 </ThemeIcon>
                 <Stack gap={6}>
