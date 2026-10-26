@@ -16,9 +16,10 @@ from pulse_ingest.heuristics import norm
 from pulse_ingest.mapping import ColumnSource, Mapping
 from pulse_ingest.profile import FALSE_WORDS, TRUE_WORDS
 from pulse_ingest.pseudonymize import EntityMap, canonical_ids, hashed
+from pulse_ingest.refusal import Refused
 
 
-class MappingError(ValueError):
+class MappingError(Refused):
     """The mapping cannot be applied (not approved, or a required column has no source)."""
 
 
@@ -80,7 +81,12 @@ def build_table(
         elif source and source.constant is not None:
             out[column.name] = source.constant
         elif column.required:
-            raise MappingError(f"{name}.{column.name} is required and has no source")
+            raise MappingError(
+                f"{name}.{column.name} is required and has no source",
+                "required_column_missing",
+                table=name,
+                column=column.name,
+            )
         else:
             out[column.name] = pd.Series(pd.NA, index=df.index, dtype="object")
     names = None
@@ -102,7 +108,7 @@ def normalize(
 ) -> dict[str, pd.DataFrame]:
     """Typed, pseudonymised target tables of an approved mapping (the entity map is updated)."""
     if mapping.status != "approved":
-        raise MappingError("the mapping is not approved")
+        raise MappingError("the mapping is not approved", "mapping_not_approved")
     built, names = {}, {}
     for name, table_map in mapping.tables.items():
         frames = [tables[s] for s in table_map.sources]

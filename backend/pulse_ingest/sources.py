@@ -12,6 +12,8 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
+from pulse_ingest.refusal import Refused
+
 MAX_COMPRESSED = 1 << 30  # 1 GB
 MAX_UNCOMPRESSED = 8 << 30
 MAX_RATIO = 200  # uncompressed / compressed, per file: beyond this it is a zip bomb
@@ -20,7 +22,7 @@ READABLE = (".csv", ".tsv", ".txt", ".xlsx")
 ARCHIVES = (".zip", ".gz", ".tgz", ".tar", ".rar", ".7z", ".bz2", ".xz")
 
 
-class UnsafeArchive(ValueError):
+class UnsafeArchive(Refused):
     """The archive breaks a safety rule; nothing was extracted."""
 
 
@@ -32,11 +34,15 @@ class ZipSource:
     def fetch(self, staging_dir: Path) -> list[Path]:
         """Extract the readable files under ``staging_dir/files``; returns them, sorted."""
         if self.path.stat().st_size > MAX_COMPRESSED:
-            raise UnsafeArchive(f"the archive is larger than {MAX_COMPRESSED >> 20} MB")
+            raise UnsafeArchive(
+                f"the archive is larger than {MAX_COMPRESSED >> 20} MB",
+                "archive_too_large",
+                max_mb=MAX_COMPRESSED >> 20,
+            )
         try:
             archive = zipfile.ZipFile(self.path)
         except zipfile.BadZipFile as exc:
-            raise UnsafeArchive(f"not a zip file: {exc}") from exc
+            raise UnsafeArchive(f"not a zip file: {exc}", "archive_not_zip") from exc
         with archive:
             members = [m for m in archive.infolist() if not m.is_dir()]
             check_members(members)
@@ -53,29 +59,60 @@ class ZipSource:
                     while chunk := src.read(1 << 20):
                         copied += len(chunk)
                         if copied > member.file_size:  # the header lied about the size
-                            raise UnsafeArchive(f"{member.filename}: larger than declared")
+                            raise UnsafeArchive(
+                                f"{member.filename}: larger than declared",
+                                "archive_size_mismatch",
+                                file=member.filename,
+                            )
                         dst.write(chunk)
                 written.append(target)
         if not written:
-            raise UnsafeArchive(f"no readable files ({', '.join(READABLE)}) in the archive")
+            raise UnsafeArchive(
+                f"no readable files ({', '.join(READABLE)}) in the archive",
+                "archive_no_readable_files",
+                extensions=list(READABLE),
+            )
         return sorted(written)
 
 
 def check_members(members: list[zipfile.ZipInfo]) -> None:
     if len(members) > MAX_FILES:
-        raise UnsafeArchive(f"{len(members)} files; at most {MAX_FILES}")
+        raise UnsafeArchive(
+            f"{len(members)} files; at most {MAX_FILES}",
+            "archive_too_many_files",
+            count=len(members),
+            max=MAX_FILES,
+        )
     total = 0
     for member in members:
         name = member.filename.replace("\\", "/")
         path = PurePosixPath(name)
         if path.is_absolute() or ".." in path.parts or ":" in path.parts[0]:
-            raise UnsafeArchive(f"{member.filename}: a path outside the archive")
+            raise UnsafeArchive(
+                f"{member.filename}: a path outside the archive",
+                "archive_unsafe_path",
+                file=member.filename,
+            )
         if stat.S_ISLNK(member.external_attr >> 16):
-            raise UnsafeArchive(f"{member.filename}: a symbolic link")
+            raise UnsafeArchive(
+                f"{member.filename}: a symbolic link", "archive_symlink", file=member.filename
+            )
         if path.suffix.lower() in ARCHIVES:
-            raise UnsafeArchive(f"{member.filename}: an archive inside the archive")
+            raise UnsafeArchive(
+                f"{member.filename}: an archive inside the archive",
+                "archive_nested",
+                file=member.filename,
+            )
         if member.compress_size and member.file_size / member.compress_size > MAX_RATIO:
-            raise UnsafeArchive(f"{member.filename}: compression ratio too high")
+            raise UnsafeArchive(
+                f"{member.filename}: compression ratio too high",
+                "archive_ratio",
+                file=member.filename,
+            )
         total += member.file_size
     if total > MAX_UNCOMPRESSED:
-        raise UnsafeArchive(f"the archive expands beyond {MAX_UNCOMPRESSED >> 30} GB")
+        raise UnsafeArchive(
+            f"the archive expands beyond {MAX_UNCOMPRESSED >> 30} GB",
+            "archive_too_big",
+            max_gb=MAX_UNCOMPRESSED >> 30,
+        )

@@ -29,6 +29,7 @@ from pulse_ingest.readers import read_files
 from pulse_ingest.sources import ZipSource
 
 RAW_FLOAT_FORMAT = "%.4f"
+MAX_DISTINCT = 200  # values.json keeps the distinct values of columns with at most this many
 
 
 def new_ingestion_id() -> str:
@@ -37,6 +38,25 @@ def new_ingestion_id() -> str:
 
 def _staging(customer_dir: Path, ingestion: str) -> Path:
     return CustomerDir(customer_dir).staging(ingestion)
+
+
+def distinct_values(tables: dict[str, pd.DataFrame]) -> dict[str, dict[str, list[str]]]:
+    """Source table -> column -> its distinct non-empty values, for columns with few of them.
+
+    Staged for the review screen (unrecognised spellings, a different source for an enum column);
+    deleted with the staging folder by ``apply``. Never sent to the LLM."""
+    out: dict[str, dict[str, list[str]]] = {}
+    for name, df in tables.items():
+        columns = {}
+        for column in df.columns:
+            raw = df[column].dropna().unique()
+            if len(raw) > MAX_DISTINCT * 4:  # many raw spellings: not a category column
+                continue
+            values = sorted({str(v).strip() for v in raw} - {""})
+            if 0 < len(values) <= MAX_DISTINCT:
+                columns[str(column)] = values
+        out[name] = columns
+    return out
 
 
 def latest_approved(customer_dir: Path) -> Mapping | None:
@@ -54,14 +74,20 @@ def propose(
     ingestion: str | None = None,
     llm_client=None,
 ) -> tuple[str, Mapping]:
-    """Stage the export and write ``mapping.proposed.json``; returns the ingestion id."""
+    """Stage the export and write ``mapping.proposed.json``; returns the ingestion id.
+
+    The zip may already be in ``uploads/<ingestion>/`` (the site streams it there); otherwise it
+    is copied in. A structure seen before reuses its approved mapping, unless the export brings
+    enum spellings that mapping does not know: then it goes back to review as a new version."""
     ingestion = ingestion or new_ingestion_id()
     upload = CustomerDir(customer_dir).uploads(ingestion)
     staging = _staging(customer_dir, ingestion)
-    upload.mkdir(parents=True)
+    upload.mkdir(parents=True, exist_ok=True)
     staging.mkdir(parents=True)
-    shutil.copyfile(zip_path, upload / zip_path.name)
-    files = ZipSource(upload / zip_path.name).fetch(staging)
+    stored = upload / zip_path.name
+    if zip_path.resolve() != stored.resolve():
+        shutil.copyfile(zip_path, stored)
+    files = ZipSource(stored).fetch(staging)
     tables, read_info = read_files(files, staging / "files")
     groups = union_groups(tables)
     grouped = {
@@ -78,11 +104,18 @@ def propose(
     structure = fingerprint(profile)
     write_json_lf(staging / "tables.json", index)
     write_json_lf(staging / "profile.json", {"read": read_info, "tables": to_json(profile)})
+    values = distinct_values(grouped)
+    write_json_lf(staging / "values.json", values, ndigits=None)
 
     previous = latest_approved(customer_dir)
     if previous and previous.fingerprint == structure:
         mapping = previous.model_copy(deep=True)
         mapping.review = [f"same structure as the approved mapping v{previous.version}"]
+        new = heuristics.unrecognised_values(mapping, contract, values)
+        if new:
+            mapping.status = "proposed"
+            mapping.version = previous.version + 1
+            mapping.review += [f"{key}: new spelling(s) {', '.join(v)}" for key, v in new.items()]
     else:
         mapping = heuristics.propose(profile, contract, structure)
         if use_llm:
@@ -139,7 +172,9 @@ def apply(customer_dir: Path, ingestion: str, contract: IngestContract) -> dict:
     write_json_lf(data / "preflight.json", result.get("report", {}), ndigits=None)
     entity_map.save()
     previous = latest_approved(customer_dir)
-    if not previous or previous.model_dump() != mapping.model_dump():
+    if not previous or previous.model_dump(exclude={"review"}) != mapping.model_dump(
+        exclude={"review"}
+    ):
         layout.mappings.mkdir(parents=True, exist_ok=True)
         write_json_lf(
             layout.mappings / f"v{mapping.version}.json",
@@ -158,6 +193,7 @@ def pipeline_command(
     *,
     llm: bool = False,
     launcher: Sequence[str] = ("uv", "run", "python"),
+    module: str = "pulse_flow.run",
 ) -> list[str]:
     """The pipeline run on an applied ingestion, into the customer's runs/ and artifacts/.
 
@@ -168,7 +204,7 @@ def pipeline_command(
     return [
         *launcher,
         "-m",
-        "pulse_flow.run",
+        module,
         *([] if llm else ["--no-llm"]),
         "--spec",
         contract.spec_ref,

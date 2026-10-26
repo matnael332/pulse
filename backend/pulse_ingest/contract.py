@@ -17,6 +17,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from pulse_ingest.refusal import Refused
+
 
 @dataclass(frozen=True, kw_only=True)
 class TargetColumn:
@@ -50,7 +52,7 @@ class TargetTable:
         return tuple(c for c in self.columns if not c.extra)
 
 
-class PreflightError(ValueError):
+class PreflightError(Refused):
     """The export cannot be modelled; the message says what is missing."""
 
 
