@@ -63,6 +63,20 @@ def test_the_dev_login_exists_only_when_switched_on(server_settings):
     settings = server_settings.model_copy(update={"dev_login": False})
     with TestClient(create_app(settings)) as client:
         assert client.post("/api/auth/dev-login", json={"email": OWNER}).status_code == 404
+        link = client.get("/api/auth/dev-login", params={"email": OWNER}, follow_redirects=False)
+        assert link.status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("next_", "lands"), [("/data", "/data"), ("//evil.example", "/"), (None, "/")]
+)
+def test_the_dev_login_link_signs_in_and_goes_on(server, next_, lands):
+    params = {"email": "Dana@Acme.example"} | ({"next": next_} if next_ else {})
+    response = server.get("/api/auth/dev-login", params=params, follow_redirects=False)
+    assert response.status_code == 302 and response.headers["location"] == lands
+    assert server.get("/api/me").json()["user"]["email"] == "dana@acme.example"
+    bad = server.get("/api/auth/dev-login", params={"email": "nope"}, follow_redirects=False)
+    assert bad.status_code == 422
 
 
 def test_logout_ends_the_session_for_good(server):
