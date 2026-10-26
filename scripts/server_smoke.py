@@ -1,10 +1,11 @@
-"""Smoke test of a running pulse-server: health, then a company from signup to approval.
+"""Smoke test of a running pulse-server: health, then a company from signup to approval, and
+with ``--demo`` the demo through the worker to a finished run (the real pipeline).
 
 Needs the dev login and ops@example.com among the operators (the CI docker job sets both):
 
     PULSE_ENV=development PULSE_DEV_LOGIN=1 PULSE_OPERATOR_EMAILS=ops@example.com \
         uv run pulse-server serve --migrate
-    python scripts/server_smoke.py http://127.0.0.1:8100
+    python scripts/server_smoke.py http://127.0.0.1:8100 [--demo]
 
 Standard library only, so it runs anywhere. Exit code 0 when every step passes.
 """
@@ -14,10 +15,12 @@ from __future__ import annotations
 import http.cookiejar
 import json
 import sys
+import time
 import urllib.error
 import urllib.request
 
 OWNER, OPERATOR = "owner@acme.example", "ops@example.com"
+DEMO_MINUTES = 15  # building the demo export, reading it, and a full run
 
 
 class Client:
@@ -53,7 +56,46 @@ def expect(answer: tuple[int, dict], status: int, step: str) -> dict:
     return body
 
 
-def main(base: str) -> int:
+def wait(client: Client, path: str, done, step: str) -> dict:
+    """Poll ``path`` until ``done(body)``; fail on a failed status or after DEMO_MINUTES."""
+    deadline = time.monotonic() + DEMO_MINUTES * 60
+    while True:
+        status, body = client.call("GET", path)
+        if status != 200:
+            raise SystemExit(f"FAIL {step}: HTTP {status} {body}")
+        if body.get("status") == "failed":
+            raise SystemExit(f"FAIL {step}: {body.get('error')}")
+        if done(body):
+            print(f"ok   {step}")
+            return body
+        if time.monotonic() > deadline:
+            raise SystemExit(f"FAIL {step}: still {body.get('status')} after {DEMO_MINUTES} min")
+        time.sleep(3)
+
+
+def demo(client: Client) -> None:
+    """The demo end to end: proposal, the customer's approval, the run, the summary."""
+    ingestion = expect(client.call("POST", "/api/demo", {"language": "he"}), 201, "start the demo")
+    path = f"/api/ingestions/{ingestion['id']}"
+    shown = wait(client, path, lambda b: b["status"] != "proposing", "the demo export is read")
+    if shown["status"] == "proposed":
+        review = expect(client.call("GET", f"{path}/review"), 200, "the review")
+        if review["blocking"]:
+            raise SystemExit(f"FAIL the demo's mapping is incomplete: {review['blocking']}")
+        expect(client.call("POST", f"{path}/approve"), 200, "approve the mapping")
+    applied = wait(client, path, lambda b: b["status"] == "applied", "the data is prepared")
+    run = wait(
+        client,
+        f"/api/runs/{applied['run_id']}",
+        lambda b: b["status"] == "succeeded",
+        "the pipeline run",
+    )
+    if not run["summary"] or run["summary"]["accounts"] <= 0:
+        raise SystemExit(f"FAIL the run scored no accounts: {run['summary']}")
+    print(f"     {run['summary']}")
+
+
+def main(base: str, with_demo: bool = False) -> int:
     client = Client(base)
     health = expect(client.call("GET", "/health"), 200, "health")
     if health.get("db") != "ok":
@@ -76,9 +118,12 @@ def main(base: str) -> int:
     if expect(client.call("GET", "/api/me"), 200, "me again")["state"] != "active":
         raise SystemExit("FAIL the company should be active")
     expect(client.call("GET", "/api/company"), 200, "the active company")
+    if with_demo:
+        demo(client)
     print("server smoke test passed")
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8100"))
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    sys.exit(main(args[0] if args else "http://127.0.0.1:8100", "--demo" in sys.argv))
