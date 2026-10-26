@@ -4,7 +4,6 @@ Runs on a SQLite file; the CI docker job runs the same flow against Postgres."""
 
 from datetime import timedelta
 
-import httpx
 import pytest
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
@@ -12,25 +11,13 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
 
 from pulse_server.app import create_app
 from pulse_server.db import make_engine
 from pulse_server.models import AuditEvent, Base, LoginSession, User, utcnow
 from pulse_server.security import safe_next
 from pulse_server.settings import Settings
-
-OWNER, OPERATOR = "owner@acme.example", "ops@example.com"
-
-
-def login(client: TestClient, email: str) -> None:
-    client.cookies.clear()
-    assert client.post("/api/auth/dev-login", json={"email": email}).status_code == 204
-
-
-def db_session(settings: Settings) -> Session:
-    return Session(make_engine(settings.database_url))
-
+from tests.server_helpers import OPERATOR, OWNER, db_session, decide, login, signup
 
 # ----------------------------------------------------------------------------- settings, database
 
@@ -153,18 +140,6 @@ def test_safe_next(value, expected):
 
 
 # ----------------------------------------------------------------------------- companies
-
-
-def signup(client: TestClient, email: str = OWNER, name: str = "Acme Ltd") -> dict:
-    login(client, email)
-    response = client.post("/api/signup/company", json={"name": name})
-    assert response.status_code == 201
-    return response.json()
-
-
-def decide(client: TestClient, company_id: int, action: str, **body) -> httpx.Response:
-    login(client, OPERATOR)
-    return client.post(f"/api/admin/companies/{company_id}/{action}", json=body)
 
 
 def test_a_new_company_waits_for_approval(server):
