@@ -15,6 +15,7 @@ from pulse_core.stages import run_analyst_stage
 from pulse_ingest import heuristics, llm, session
 from pulse_ingest.contract import PreflightError
 from pulse_ingest.llm_payloads import mapping_payload
+from pulse_ingest.normalize import MappingError
 from pulse_ingest.profile import infer_kind, profile_tables
 from pulse_ingest.sources import UnsafeArchive, ZipSource
 from pulse_specs.workforce_saas import columns as wf
@@ -102,6 +103,16 @@ def test_next_month_reuses_the_approved_mapping(ingested):
     session.apply(ingested.customer, ingestion, CONTRACT)
     after = pd.read_csv(ingested.customer / "entity_map.csv", dtype=str)
     pd.testing.assert_frame_equal(before, after)
+
+
+def test_apply_refuses_a_mapping_that_is_not_approved(ingested, tmp_path):
+    customer = tmp_path / "c"
+    ingestion, mapping = session.propose(ingested.export, customer, CONTRACT, use_llm=False)
+    assert mapping.status == "proposed"
+    with pytest.raises(MappingError, match="not approved"):
+        session.apply(customer, ingestion, CONTRACT)
+    assert not (customer / "data").exists() and not (customer / "entity_map.csv").exists()
+    assert (customer / "staging" / ingestion / "mapping.proposed.json").exists()
 
 
 # ----------------------------------------------------------------------------- the mapping
