@@ -99,10 +99,14 @@ def demo(client: Client) -> None:
     )
     if not run["summary"] or run["summary"]["accounts"] <= 0:
         raise SystemExit(f"FAIL the run scored no accounts: {run['summary']}")
+    if run["summary"].get("revenue_at_risk") is None or not run["summary"].get("revenue_total"):
+        raise SystemExit(f"FAIL the run has no revenue figures: {run['summary']}")
     print(f"     {run['summary']}")
     results = expect(client.call("GET", f"/api/runs/{run['id']}/results"), 200, "the results")
     if not any(a["name"] for a in results["accounts"]):
         raise SystemExit("FAIL no account has a name (the entity map was not joined)")
+    if any(a["mrr"] is None for a in results["accounts"]):
+        raise SystemExit("FAIL an account has no monthly revenue (score_rows was not joined)")
     advanced = expect(client.call("GET", f"/api/runs/{run['id']}/advanced"), 200, "advanced")
     status, image = client.raw(f"/api/runs/{run['id']}/figures/{advanced['figures'][0]}")
     if status != 200 or not image.startswith(bytes.fromhex("89504e47")):  # a PNG

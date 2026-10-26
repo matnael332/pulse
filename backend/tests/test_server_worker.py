@@ -100,6 +100,8 @@ def test_an_upload_from_proposal_to_scores(settings, company, scrambled_export):
             "high": 2,
             "elevated": 1,
             "normal": 2,
+            "revenue_at_risk": 2000,
+            "revenue_total": 3000,
             "snapshot_date": row.report["snapshot_date"],
         }
         assert {j.status for j in db.scalars(select(Job))} == {"done"}

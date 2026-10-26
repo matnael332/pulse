@@ -50,6 +50,24 @@ def test_the_business_view_names_the_accounts_at_risk(server, finished):
     assert shown["summary"]["accounts"] == 5 and not shown["run"]["demo"]
 
 
+def test_the_revenue_at_risk_and_its_currency(server, server_settings, finished):
+    shown = server.get(f"/api/runs/{finished}/results").json()
+    assert [a["mrr"] for a in shown["accounts"]] == [1200, 800, 500, 300, 200]
+    assert (shown["summary"]["revenue_at_risk"], shown["summary"]["revenue_total"]) == (2000, 3000)
+    assert shown["currency"] == "ILS"
+    assert server.put("/api/company/currency", json={"currency": "USD"}).status_code == 200
+    assert server.get(f"/api/runs/{finished}/results").json()["currency"] == "USD"
+
+
+def test_a_run_without_its_scored_rows_has_no_revenue(server, server_settings, finished):
+    folder = CustomerDir(server_settings.customers_root / "acme")
+    (folder.runs / finished / "artifacts" / "score_rows.csv").unlink()
+    shown = server.get(f"/api/runs/{finished}/results").json()
+    assert {a["mrr"] for a in shown["accounts"]} == {None}
+    assert (shown["summary"]["revenue_at_risk"], shown["summary"]["revenue_total"]) == (None, None)
+    assert shown["summary"]["accounts"] == 5
+
+
 def test_the_advanced_view_and_its_documents(server, finished):
     shown = server.get(f"/api/runs/{finished}/advanced").json()
     assert shown["selected_model"] == "logistic_regression" and shown["threshold"] == 0.33

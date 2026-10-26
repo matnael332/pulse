@@ -2,7 +2,8 @@
 
 Read from the run's own artifacts (``runs/<id>/artifacts``; every run keeps them), with the
 account names joined in from the folder's entity map. Only what the screens need is served:
-never the model, the clean data, the features or the rows that were scored.
+never the model, the clean data, the features or the rows that were scored (of those, only each
+account's monthly revenue is read, see ``scores``).
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, PlainTextResponse
 
-from pulse_server import jobs
+from pulse_server import jobs, scores
 from pulse_server.deps import ActiveCompany, Config, Db
 from pulse_server.errors import http_error
 from pulse_server.models import Run
@@ -76,6 +77,7 @@ def _business(artifacts: str, entity_map: str, _stamp: tuple) -> dict:
     reasons = {
         e["account_id"]: e["reasons"] for e in _read_json(art / "reasons.json").get("entities", [])
     }
+    mrr = scores.scored_mrr(art)
     accounts = []
     with open(art / "scores_current.csv", encoding="utf-8", newline="") as handle:
         for row in csv.DictReader(handle):
@@ -88,6 +90,7 @@ def _business(artifacts: str, entity_map: str, _stamp: tuple) -> dict:
                     "level": row["risk_level"],
                     "probability": float(row["probability"]),
                     "rank": int(row["rank"]),
+                    "mrr": mrr.get(row["account_id"]),
                     "reasons": reasons.get(row["account_id"], []),
                 }
             )
@@ -104,6 +107,7 @@ def _business(artifacts: str, entity_map: str, _stamp: tuple) -> dict:
     insights = _read_json(art / "narratives.json").get("insights") or {}
     contract = _read_json(art / "dataset_contract.json")
     return {
+        "revenue": scores.revenue({a["id"]: a["level"] for a in accounts}, mrr),
         "accounts": accounts,
         "distribution": {
             "levels": levels,
@@ -138,7 +142,8 @@ def results(run_id: str, company: ActiveCompany, db: Db, settings: Config) -> di
     run, art, entity_map = _artifacts(settings, db, company, run_id)
     if not (art / "scores_current.csv").exists():
         raise HTTPException(404, "no results for this run")
-    business = _business(str(art), str(entity_map), _stamp(art / "scores_current.csv", entity_map))
+    stamp = _stamp(art / "scores_current.csv", art / "score_rows.csv", entity_map)
+    business = dict(_business(str(art), str(entity_map), stamp))
     report = run.ingestion.report or {}
     return {
         "run": {
@@ -148,7 +153,9 @@ def results(run_id: str, company: ActiveCompany, db: Db, settings: Config) -> di
             "mode": run.mode,
             "finished_at": run.finished_at.isoformat() if run.finished_at else None,
         },
-        "summary": run.summary,
+        # The revenue is read from the artifacts, so runs summarised before it was recorded have it.
+        "summary": {**(run.summary or {}), **business.pop("revenue")},
+        "currency": company.currency,
         **business,
         "data": {
             k: report.get(k)

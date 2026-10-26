@@ -29,7 +29,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from pulse_core.paths import repo_root
 from pulse_core.status import read_status
 from pulse_ingest import session
-from pulse_server import jobs, steps
+from pulse_server import jobs, scores, steps
 from pulse_server.db import make_engine
 from pulse_server.models import Company, Ingestion, Job, Run, utcnow
 from pulse_server.settings import Settings
@@ -318,16 +318,19 @@ class Worker:
 
 
 def summarise(artifacts: Path, report: dict) -> dict:
-    """Accounts scored per risk level, and the snapshot date (for the home page and history)."""
+    """Accounts scored per risk level, the revenue at risk and the snapshot date (for history)."""
     counts = {"high": 0, "elevated": 0, "normal": 0}
+    levels: dict[str, str] = {}
     path = artifacts / "scores_current.csv"
     if path.exists():
         with open(path, encoding="utf-8", newline="") as handle:
             for row in csv.DictReader(handle):
                 counts[row["risk_level"]] = counts.get(row["risk_level"], 0) + 1
+                levels[row["account_id"]] = row["risk_level"]
     return {
         "accounts": sum(counts.values()),
         **counts,
+        **scores.revenue(levels, scores.scored_mrr(artifacts)),
         "snapshot_date": report.get("snapshot_date"),
     }
 
