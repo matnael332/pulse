@@ -30,6 +30,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from pulse_server.db import UTCDateTime
 
 COMPANY_STATUSES = ("pending", "active", "rejected", "suspended")
+CURRENCIES = ("ILS", "USD", "EUR")  # what the company's revenue figures are in
 PROVIDERS = ("google", "microsoft", "dev")
 LANGUAGES = ("he", "en")
 INGESTION_STATUSES = ("proposing", "proposed", "applying", "applied", "failed", "discarded")
@@ -60,12 +61,16 @@ class Base(DeclarativeBase):
 
 class Company(Base):
     __tablename__ = "companies"
-    __table_args__ = (CheckConstraint(_in("status", COMPANY_STATUSES), name="status"),)
+    __table_args__ = (
+        CheckConstraint(_in("status", COMPANY_STATUSES), name="status"),
+        CheckConstraint(_in("currency", CURRENCIES), name="currency"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
     slug: Mapped[str | None] = mapped_column(String(63), unique=True)  # set on approval
     status: Mapped[str] = mapped_column(String(16), default="pending")
+    currency: Mapped[str] = mapped_column(String(3), default="ILS", server_default="ILS")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
     decided_by: Mapped[str | None] = mapped_column(String(320))
