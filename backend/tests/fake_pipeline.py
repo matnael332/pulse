@@ -31,6 +31,13 @@ SCORES = [
     ("acc_000004", "normal"),
     ("acc_000005", "normal"),
 ]
+MRR = {  # monthly revenue in the scored month: 2000 at high risk, 3000 in all (rounded)
+    "acc_000001": 1200.4,
+    "acc_000002": 799.6,
+    "acc_000003": 500,
+    "acc_000004": 300,
+    "acc_000005": 199.5,
+}
 
 
 PNG = bytes.fromhex(
@@ -155,6 +162,12 @@ def main() -> int:
     for rank, (account, level) in enumerate(SCORES, start=1):
         lines.append(f"{account},{account}:2025-08,2025-08-31 23:59:59,0.{9 - rank},{level},{rank}")
     (artifacts / "scores_current.csv").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    # The rows that were scored: each account's revenue in the scored month, and an older month
+    # that must not be counted.
+    rows = ["account_month_id,account_id,month,seats,mrr", "acc_000001:2025-07,acc_000001,7,9,9999"]
+    for account, _level in SCORES:
+        rows.append(f"{account}:2025-08,{account},8,9,{MRR[account]}")
+    (artifacts / "score_rows.csv").write_text("\n".join(rows) + "\n", encoding="utf-8")
     write_artifacts(artifacts)
     status["status"] = "success"
     write()
