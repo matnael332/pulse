@@ -18,6 +18,7 @@ Object.defineProperty(window, "matchMedia", {
   })),
 });
 Element.prototype.scrollIntoView = vi.fn(); // the dropdowns scroll their selected option
+HTMLCanvasElement.prototype.getContext = vi.fn(() => null) as never; // no canvas: the sky stays blank
 window.ResizeObserver = class {
   observe() {}
   unobserve() {}

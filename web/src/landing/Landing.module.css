@@ -1,0 +1,884 @@
+/* The landing page, after the "one motif" direction: the orbit at enormous scale, cropped by the
+   screen, and the same circle returning as the stage of the sample customer and the shape of the
+   privacy fragment. Five type sizes: --s1 to --s5. Motion is transform and opacity, all of it under
+   prefers-reduced-motion: no-preference; the still page is the finished page. */
+.page {
+  --m: clamp(16px, 2.4vw, 32px);
+  --s1: clamp(76px, 10.5vw, 168px);
+  --s2: clamp(48px, 6.4vw, 104px);
+  --s3: clamp(26px, 2.6vw, 40px);
+  --s4: 20px;
+  --s5: 16px;
+  --gap: clamp(120px, 14vw, 200px);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  background: var(--pulse-ground);
+  color: var(--pulse-ink);
+  font-family: var(--pulse-font-text);
+  font-size: var(--s5);
+  line-height: 1.55;
+  overflow-x: clip;
+}
+
+.display {
+  font-family: var(--pulse-font-display);
+  font-weight: 600;
+  font-stretch: 72%;
+  line-height: 0.98;
+  letter-spacing: 0;
+  margin: 0;
+  text-wrap: balance;
+}
+
+:global(html[lang="en"]) .display {
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+
+/* Off screen until focused: the first stop for a keyboard. */
+.skip {
+  position: absolute;
+  z-index: 10;
+  inset-inline-start: var(--m);
+  top: 12px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--pulse-ink);
+  color: var(--pulse-ground);
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.skip:focus-visible {
+  transform: none;
+}
+
+/* Pause everything that moves (WCAG 2.2.2); there is nothing to pause when motion is reduced. */
+.motion {
+  position: absolute;
+  z-index: 2;
+  inset-inline-end: var(--m);
+  bottom: 24px;
+  font: inherit;
+  color: var(--pulse-muted);
+  background: none;
+  border: 0;
+  padding: 8px 0;
+  cursor: pointer;
+  touch-action: manipulation;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  transition: color 180ms ease;
+}
+
+.motion:hover {
+  color: var(--pulse-ink);
+}
+
+.page[data-paused] .fill {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------- the bar on top */
+.nav {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px var(--m);
+}
+
+.navLinks {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.navLink {
+  color: var(--pulse-muted);
+  text-decoration: none;
+  transition: color 180ms ease;
+}
+
+.navLink:hover {
+  color: var(--pulse-ink);
+}
+
+.langButton {
+  font: inherit;
+  color: var(--pulse-ink);
+  background: none;
+  border: 1px solid var(--pulse-outline); /* taste-skill-ignore: the brand's ghost pill (SpaceX DESIGN.md) */
+  border-radius: 999px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    transform 140ms var(--ease-out);
+}
+
+.langButton:hover {
+  border-color: var(--pulse-ink);
+}
+
+.langButton:active {
+  transform: scale(0.96);
+}
+
+/* ---------------------------------------------------------------------------- the first screen */
+.hero {
+  position: relative;
+  min-height: max(100svh, 680px);
+  overflow: hidden;
+}
+
+.orbit {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.sky {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.planet {
+  position: absolute;
+  border-radius: 50%;
+  background: #101010;
+}
+
+.heroCopy {
+  position: absolute;
+  z-index: 2;
+  inset-inline-start: var(--m);
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(48vw, 660px);
+}
+
+.title {
+  font-size: var(--s2);
+  margin-bottom: 28px;
+}
+
+.lead {
+  font-size: var(--s4);
+  line-height: 1.5;
+  margin: 0 0 36px;
+  max-width: 34ch;
+}
+
+.small {
+  color: var(--pulse-muted);
+  margin: 20px 0 0;
+}
+
+.error {
+  color: var(--pulse-red);
+  margin: 0 0 20px;
+}
+
+/* ---------------------------------------------------------------------------- buttons */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 26px;
+  border: 1px solid var(--pulse-ink); /* taste-skill-ignore: the brand's ghost pill (SpaceX DESIGN.md) */
+  border-radius: 999px;
+  color: var(--pulse-ink);
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    transform 140ms var(--ease-out);
+}
+
+.button:hover {
+  background: var(--pulse-ink);
+  color: var(--pulse-ground);
+}
+
+.button:active {
+  transform: scale(0.97);
+}
+
+.filled {
+  background: var(--pulse-ink);
+  color: var(--pulse-ground);
+}
+
+.filled:hover {
+  background: var(--pulse-muted);
+  border-color: var(--pulse-muted);
+}
+
+.devForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.devInput {
+  min-height: 52px;
+  min-width: 240px;
+  padding: 0 18px;
+  font: inherit;
+  color: var(--pulse-ink);
+  background: var(--pulse-raised);
+  border: 1px solid var(--pulse-outline); /* taste-skill-ignore: a form field */
+  border-radius: 999px;
+}
+
+/* ---------------------------------------------------------------------------- how it works */
+.section {
+  padding: var(--gap) var(--m) 0;
+}
+
+.heading {
+  font-size: var(--s2);
+  margin-bottom: 64px;
+  max-width: 24ch;
+}
+
+.bar {
+  display: flex;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  height: 26vh;
+  min-height: 220px;
+}
+
+/* Each part is a dark slot that fills with its own tone, the way the product's progress bar fills:
+   the fill sweeps in behind the words and the words turn dark with it. Still, it is all filled. */
+.segment {
+  position: relative;
+  min-width: 12%;
+  overflow: hidden;
+  background: #767676; /* the empty slot: black type on it is 4.5:1, as on every fill */
+  color: var(--pulse-ground);
+}
+
+.fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+}
+
+:global([dir="rtl"]) .fill {
+  transform-origin: right center;
+}
+
+.segment:nth-child(1) .fill {
+  background: #ffffff;
+}
+.segment:nth-child(2) .fill {
+  background: #e0e0e0;
+}
+.segment:nth-child(3) .fill {
+  background: #b4b4b4;
+}
+.segment:nth-child(4) .fill {
+  background: var(--pulse-red);
+}
+
+.segmentInner {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px;
+}
+
+.time {
+  font-family: var(--pulse-font-display);
+  font-weight: 600;
+  font-stretch: 72%;
+  font-size: var(--s3);
+  line-height: 1;
+}
+
+.segmentText {
+  max-width: 24ch;
+  line-height: 1.4;
+}
+
+.note {
+  margin: 20px 0 0;
+  color: var(--pulse-muted);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fill {
+    animation: 12s var(--ease-out) infinite paused both;
+  }
+  [data-playing="true"] .fill {
+    animation-play-state: running;
+  }
+  .segment:nth-child(1) .fill {
+    animation-name: fill1;
+  }
+  .segment:nth-child(2) .fill {
+    animation-name: fill2;
+  }
+  .segment:nth-child(3) .fill {
+    animation-name: fill3;
+  }
+  .segment:nth-child(4) .fill {
+    animation-name: fill4;
+  }
+}
+
+/* One 12-second cycle: the four parts fill in turn (from 2%, 18%, 34%, 50%), hold, and clear. */
+@keyframes fill1 {
+  0%,
+  2% {
+    transform: scaleX(0);
+    opacity: 1;
+  }
+  12%,
+  88% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  96% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+  100% {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+}
+@keyframes fill2 {
+  0%,
+  18% {
+    transform: scaleX(0);
+    opacity: 1;
+  }
+  28%,
+  88% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  96% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+  100% {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+}
+@keyframes fill3 {
+  0%,
+  34% {
+    transform: scaleX(0);
+    opacity: 1;
+  }
+  44%,
+  88% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  96% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+  100% {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+}
+@keyframes fill4 {
+  0%,
+  50% {
+    transform: scaleX(0);
+    opacity: 1;
+  }
+  62%,
+  88% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  96% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+  100% {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+}
+
+/* ---------------------------------------------------------------------------- why they're at risk */
+.showcase {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: center;
+  gap: 48px;
+}
+
+.names {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.namesHeading {
+  font-size: var(--s3);
+  color: var(--pulse-muted);
+  margin: 0 0 8px;
+  font-weight: 600;
+  font-family: var(--pulse-font-display);
+  font-stretch: 72%;
+}
+
+/* The list is a piece of the product's own risk table: name, probability, level. */
+.name {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  gap: 16px;
+  width: 100%;
+  text-align: start;
+  font: inherit;
+  color: var(--pulse-muted);
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--pulse-line); /* taste-skill-ignore: rows of the data-ui risk table */
+  padding: 14px 0;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: color 180ms ease;
+}
+
+.nameText {
+  font-family: var(--pulse-font-display);
+  font-weight: 600;
+  font-stretch: 72%;
+  font-size: var(--s3);
+  line-height: 1.1;
+}
+
+.level {
+  text-align: end;
+  white-space: nowrap;
+  min-width: 9ch;
+}
+
+.name:hover,
+.name[aria-pressed="true"] {
+  color: var(--pulse-ink);
+}
+
+.name[aria-pressed="true"] .nameText::before {
+  content: "";
+  display: inline-block;
+  width: 0.32em;
+  height: 0.32em;
+  border-radius: 50%;
+  background: currentColor;
+  margin-inline-end: 0.35em;
+  vertical-align: 0.2em;
+}
+
+.caption {
+  margin: 24px 0 0;
+  color: var(--pulse-muted);
+}
+
+.stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: min(64vh, 640px);
+}
+
+.disc {
+  position: absolute;
+  width: min(64vh, 640px, 92%);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--pulse-raised);
+}
+
+.cardSlot {
+  position: relative;
+  width: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.card {
+  position: relative;
+  width: min(380px, 80%);
+  background: var(--pulse-ground);
+  border: 1px solid var(--pulse-line); /* taste-skill-ignore: the card is a data-ui interface fragment */
+  border-radius: 6px;
+  padding: 24px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .card {
+    animation: cardIn 300ms ease both;
+  }
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.cardName {
+  font-size: var(--s4);
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.score {
+  font-family: var(--pulse-font-display);
+  font-weight: 600;
+  font-size: var(--s3);
+  line-height: 1.1;
+  margin: 0 0 18px;
+}
+
+.high {
+  color: var(--pulse-red);
+}
+
+.reasons {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.reasons li {
+  padding: 12px 0;
+  border-top: 1px solid var(--pulse-line); /* taste-skill-ignore: rows of the data-ui card */
+}
+
+.reasons b {
+  display: block;
+  font-weight: 600;
+}
+
+.reasons span {
+  color: var(--pulse-muted);
+}
+
+.fact {
+  position: absolute;
+  inset-inline-end: 0;
+  bottom: 12%;
+  color: var(--pulse-muted);
+}
+
+/* ---------------------------------------------------------------------------- privacy */
+.panel {
+  position: relative;
+  margin: var(--gap) 20px 0;
+  background: var(--pulse-surface);
+  border-radius: 6px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  gap: 48px;
+  padding: 56px 56px 0;
+}
+
+.statement {
+  font-size: var(--s2);
+}
+
+.points {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+  padding-top: 8px;
+  max-width: 420px;
+}
+
+.points h3 {
+  font-family: var(--pulse-font-text);
+  font-stretch: 100%;
+  font-size: var(--s4);
+  margin: 0 0 10px;
+}
+
+.points p {
+  margin: 0;
+  color: var(--pulse-ink);
+}
+
+.lens {
+  position: relative;
+  margin: 72px 0 -7vw;
+  width: min(36vw, 560px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--pulse-raised);
+  display: grid;
+  align-content: start;
+  padding: 16% 14% 0;
+}
+
+.lens h4 {
+  margin: 0 0 14px;
+  font-size: var(--s4);
+}
+
+.lens ul {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+}
+
+.lens li {
+  padding: 8px 0;
+  border-top: 1px solid var(--pulse-outline); /* taste-skill-ignore: rows of the data-ui review fragment */
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  border: 1px solid var(--pulse-outline); /* taste-skill-ignore: inside the data-ui review fragment */
+  border-radius: 999px;
+  padding: 2px 10px;
+  color: var(--pulse-muted);
+}
+
+.struck {
+  text-decoration: line-through;
+  color: var(--pulse-muted);
+}
+
+/* ---------------------------------------------------------------------------- the close */
+.close {
+  position: relative;
+  min-height: clamp(620px, 80svh, 820px);
+  margin-top: var(--gap);
+  background: var(--pulse-surface); /* one tone up from the page: the close is its own field */
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 0 var(--m);
+}
+
+.question {
+  position: absolute;
+  inset: 32px var(--m) 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: var(--s1);
+  pointer-events: none;
+}
+
+.choice {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.choiceRow {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+}
+
+.choiceRow .button {
+  min-width: 200px;
+  font-size: var(--s4);
+}
+
+.or {
+  color: var(--pulse-muted);
+}
+
+/* ---------------------------------------------------------------------------- footer */
+.footer {
+  padding: var(--gap) var(--m) 32px;
+}
+
+.blocks {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.blockLetter {
+  font-family: var(--pulse-font-display);
+  font-weight: 600;
+  font-size: 170px;
+  text-anchor: middle;
+  fill: var(--pulse-ground);
+}
+
+.footerRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 56px;
+  color: var(--pulse-muted);
+}
+
+.footerLinks {
+  display: flex;
+  gap: 28px;
+}
+
+/* ---------------------------------------------------------------------------- entrances */
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal] {
+    opacity: 0;
+    transform: translateY(24px);
+    transition:
+      opacity 700ms var(--ease-out),
+      transform 900ms var(--ease-expo);
+    transition-delay: calc(var(--i, 0) * 80ms);
+  }
+  [data-reveal][data-shown] {
+    opacity: 1;
+    transform: none;
+  }
+  .orbit {
+    animation: shutter 1.2s var(--ease-expo) both;
+  }
+}
+
+/* The signature move: the sky opens like a shutter from the side away from the text. */
+@keyframes shutter {
+  from {
+    clip-path: inset(0 0 0 100%);
+    transform: scale(1.12);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+    transform: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------- the phone */
+@media (max-width: 700px) {
+  .nav {
+    padding: 20px var(--m);
+  }
+  .navLinks a {
+    display: none;
+  }
+  .heroCopy {
+    top: 14%;
+    transform: none;
+    width: auto;
+    inset-inline: var(--m);
+  }
+  .title {
+    font-size: 13vw;
+  }
+  .heading,
+  .statement {
+    font-size: 10.5vw;
+  }
+  .lead {
+    font-size: var(--s5);
+  }
+  .bar {
+    flex-direction: column;
+    height: auto;
+  }
+  .segment {
+    min-height: 120px;
+  }
+  .showcase {
+    grid-template-columns: 1fr;
+  }
+  .stage {
+    order: -1;
+    min-height: 86vw;
+  }
+  .disc {
+    width: 86vw;
+  }
+  .fact {
+    position: static;
+    margin-top: 16px;
+  }
+  .points {
+    grid-column: auto;
+    grid-row: auto;
+  }
+  .panel {
+    margin-inline: 10px;
+    grid-template-columns: 1fr;
+    padding: 32px 20px 0;
+    gap: 32px;
+  }
+  .lens {
+    position: relative;
+    inset: auto;
+    width: 86vw;
+    margin: 0 auto -20vw;
+  }
+  .question {
+    font-size: 18vw;
+  }
+  .choiceRow {
+    flex-direction: column;
+    gap: 12px;
+    width: 72vw;
+  }
+  .choiceRow .button {
+    width: 100%;
+  }
+}
