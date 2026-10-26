@@ -3,6 +3,14 @@
 # it lives in the /srv/pulse volume, one folder per customer (customers/<slug>/, laid out as in
 # backend/pulse_ingest/layout.py: data/<ingestion>/, runs/, artifacts/, ...).
 
+# The web site, built in its own stage: only web/dist reaches the final image.
+FROM node:24-slim AS web
+WORKDIR /web
+COPY web/package.json web/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY web/ ./
+RUN npm run build
+
 FROM python:3.13-slim-bookworm
 
 # The same uv as CI, so the image installs exactly what uv.lock says.
@@ -33,6 +41,7 @@ RUN uv sync --locked --no-default-groups --group frontend --no-install-project
 COPY backend/ backend/
 COPY frontend/ frontend/
 COPY .streamlit/config.toml .streamlit/config.toml
+COPY --from=web /web/dist web/dist
 RUN uv sync --locked --no-default-groups --group frontend
 
 # A non-root user that owns the data volume.

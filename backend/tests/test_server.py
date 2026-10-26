@@ -281,6 +281,7 @@ def test_assets_are_cached_and_files_served(site):
     asset = site.get("/assets/index-abc123.js")
     assert asset.status_code == 200 and "immutable" in asset.headers["cache-control"]
     assert site.get("/favicon.svg").text == "<svg/>"
+    assert site.head("/favicon.svg").headers["content-type"].startswith("image/svg+xml")
     assert site.get("/assets/missing.js").status_code == 404
 
 
