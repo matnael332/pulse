@@ -1,16 +1,5 @@
-import {
-  Badge,
-  Button,
-  Card,
-  Group,
-  Loader,
-  Progress,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
-import { useState } from "react";
+import { Badge, Button, Card, Group, Loader, Progress, Stack, Text, Title } from "@mantine/core";
+import { lazy, Suspense, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 
 import { ApiError, getRun, retryRun, type Problem, type RunInfo } from "../api";
@@ -20,10 +9,12 @@ import { useI18n } from "../i18n";
 import { label } from "../labels";
 import { usePoll } from "../poll";
 
-/** A run: its progress through the pipeline's stages, then its summary or why it failed. */
+const Results = lazy(() => import("../results/Results"));
+
+/** A run: its progress through the pipeline's stages, then its results or why it failed. */
 export function RunPage() {
   const { id = "" } = useParams();
-  const { t, lang, locale } = useI18n();
+  const { t, lang } = useI18n();
   const navigate = useNavigate();
   const { value: run } = usePoll<RunInfo>(
     () => getRun(id),
@@ -76,38 +67,10 @@ export function RunPage() {
           </Stack>
         </Card>
       )}
-      {run.status === "succeeded" && run.summary && (
-        <>
-          <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="lg">
-            {(
-              [
-                ["run.accounts", run.summary.accounts, undefined],
-                ["run.high", run.summary.high, "red"],
-                ["run.elevated", run.summary.elevated, "orange"],
-                ["run.normal", run.summary.normal, undefined],
-              ] as const
-            ).map(([key, count, color]) => (
-              <Card key={key} className="hairline">
-                <Text size="sm" c="dimmed">
-                  {t(key)}
-                </Text>
-                <Text fz={36} fw={600} c={color}>
-                  {count.toLocaleString()}
-                </Text>
-              </Card>
-            ))}
-          </SimpleGrid>
-          {run.summary.snapshot_date && (
-            <Text c="dimmed">
-              {t("run.snapshot", {
-                date: new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(
-                  new Date(run.summary.snapshot_date),
-                ),
-              })}
-            </Text>
-          )}
-          <Text c="dimmed">{t("run.resultsSoon")}</Text>
-        </>
+      {run.status === "succeeded" && (
+        <Suspense fallback={<Loader mx="auto" mt="xl" />}>
+          <Results runId={run.id} />
+        </Suspense>
       )}
       {run.status === "failed" && (
         <Stack gap="md">

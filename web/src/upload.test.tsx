@@ -165,11 +165,9 @@ describe("progress and failures", () => {
     expect(problemText({ code: "never_heard_of", params: {} }, "en")).toBe(en("error.internal"));
   });
 
-  it("shows a finished run's summary, and a failed one can be retried", async () => {
-    const summary = { accounts: 80, high: 8, elevated: 4, normal: 68, snapshot_date: "2025-09-01" };
+  it("says why a run failed, and retries it", async () => {
     serve({
       "GET /api/me": { body: ACTIVE },
-      "GET /api/runs/run1": { body: run("succeeded", { summary, stages_done: 8 }) },
       "GET /api/runs/run2": {
         body: run("failed", {
           id: "run2",
@@ -179,10 +177,6 @@ describe("progress and failures", () => {
       "POST /api/runs/run2/retry": { status: 201, body: run("queued", { id: "run3" }) },
       "GET /api/runs/run3": { body: run("queued", { id: "run3", queue_position: 2 }) },
     });
-    const view = renderAt("/runs/run1");
-    expect(await screen.findByText(he("run.done"))).toBeInTheDocument();
-    expect(screen.getByText("68")).toBeInTheDocument();
-    view.unmount();
     renderAt("/runs/run2");
     expect(
       await screen.findByText(he("error.pipeline_failed", { stage: "בדיקת איכות הנתונים" })),
