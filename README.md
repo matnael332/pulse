@@ -113,9 +113,13 @@ cancellation rate, and notes on the data (groups missing, the windows, low confi
 advanced tab: the model's quality against the others compared, what matters most, the model card
 and the evaluation and cleaning reports, the figures, and the company's runs. The results API
 (`/api/runs/{id}/results`, `/advanced`, `/docs/...`, `/figures/...`) serves only these, never the
-model, the clean data or the scored rows.
+model, the clean data or the scored rows. Of the scored rows only each account's monthly revenue
+is read: the results carry it per account and, in the summary, the revenue at high risk and in
+total (also kept in each run's summary, for comparing runs), shown in the company's currency
+(ILS, USD or EUR; `PUT /api/company/currency`).
 
-A user signs in (`/auth/{google,microsoft}/login`, or `POST /api/auth/dev-login`), names their
+A user signs in (`/auth/{google,microsoft}/login`, or the dev login: `POST /api/auth/dev-login`,
+or the link `GET /api/auth/dev-login?email=&next=` for tools that open a fresh browser), names their
 company (`POST /api/signup/company`) and waits; an operator (`PULSE_OPERATOR_EMAILS`, verified
 address) approves it (`POST /api/admin/companies/{id}/approve`), which creates the company's
 customer folder. `/api/me` says where a user stands. The site calls everything under `/api`; only
