@@ -34,23 +34,30 @@ def _cancellations(cancelled: pd.Series, window: tuple[str, str]) -> int:
 
 
 def preflight(tables: dict[str, pd.DataFrame], groups: tuple[str, ...]) -> dict:
+    unknown = sorted(set(groups) - set(wf.ALL_GROUPS))
+    missing = [g for g in wf.CORE_GROUPS if g not in groups]
     try:
         groups = check_groups(groups)
     except ValueError as exc:
-        raise PreflightError(str(exc)) from exc
+        code, params = ("unknown_groups", unknown) if unknown else ("core_groups_missing", missing)
+        raise PreflightError(str(exc), code, groups=params) from exc
     last = max(
         tables["punches"]["punched_at"].max(),
         tables["usage_daily"]["usage_date"].max(),
     )
     if pd.isna(last):
-        raise PreflightError("no punch or usage dates: cannot tell when the export ends")
+        raise PreflightError(
+            "no punch or usage dates: cannot tell when the export ends", "no_activity_dates"
+        )
     snapshot = (last.normalize() + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
     first_bill = tables["billing_monthly"]["period"].min()
     if pd.isna(first_bill):
-        raise PreflightError("no billing periods: cannot tell when the history starts")
+        raise PreflightError(
+            "no billing periods: cannot tell when the history starts", "no_billing_periods"
+        )
     train_start = first_bill.to_period("M").start_time.strftime("%Y-%m-%d")
     cancelled = tables["accounts"]["cancelled_at"]
-    tried = []
+    tried, counts = [], {}
     for test_months in TEST_MONTHS:
         try:
             split = windows(snapshot, train_start, test_months)
@@ -59,6 +66,7 @@ def preflight(tables: dict[str, pd.DataFrame], groups: tuple[str, ...]) -> dict:
             continue
         train = _cancellations(cancelled, split["train"])
         test = _cancellations(cancelled, split["test"])
+        counts[test_months] = {"train": train, "test": test}
         if train >= MIN_TRAIN_CANCELLATIONS and test >= MIN_TEST_CANCELLATIONS:
             break
         tried.append(
@@ -67,7 +75,14 @@ def preflight(tables: dict[str, pd.DataFrame], groups: tuple[str, ...]) -> dict:
         )
     else:
         raise PreflightError(
-            f"not enough history from {train_start} to the snapshot {snapshot}: " + "; ".join(tried)
+            f"not enough history from {train_start} to the snapshot {snapshot}: "
+            + "; ".join(tried),
+            "not_enough_history",
+            train_start=train_start,
+            snapshot=snapshot,
+            cancellations=list(counts.values())[-1] if counts else None,  # the last tried
+            need_train=MIN_TRAIN_CANCELLATIONS,
+            need_test=MIN_TEST_CANCELLATIONS,
         )
     allowed = {}
     for table, column in (

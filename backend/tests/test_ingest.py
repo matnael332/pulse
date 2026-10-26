@@ -101,9 +101,42 @@ def test_next_month_reuses_the_approved_mapping(ingested):
     assert mapping.status == "approved" and mapping.version == 1
     assert "same structure" in mapping.review[0]
     before = pd.read_csv(ingested.customer / "entity_map.csv", dtype=str)
+    approved = (ingested.customer / "mappings" / "v1.json").read_bytes()
     session.apply(ingested.customer, ingestion, CONTRACT)
     after = pd.read_csv(ingested.customer / "entity_map.csv", dtype=str)
     pd.testing.assert_frame_equal(before, after)
+    # the same mapping is not written again (its review notes stay those of the approval)
+    assert (ingested.customer / "mappings" / "v1.json").read_bytes() == approved
+    assert not list(ingested.customer.glob("entity_map.csv.tmp"))
+
+
+def test_a_new_spelling_sends_a_known_structure_back_to_review(ingested):
+    mapping = session.latest_approved(ingested.customer)
+    method = mapping.tables["punches"].columns["method"]
+    source = mapping.tables["punches"].sources[0]
+    known = set(mapping.value_maps["punches.method"])
+    values = {source: {method.column: sorted(known | {"שעון חכם"})}}
+    assert heuristics.unrecognised_values(mapping, CONTRACT, values) == {
+        "punches.method": ["שעון חכם"]
+    }
+    values = {source: {method.column: sorted(known)}}
+    assert heuristics.unrecognised_values(mapping, CONTRACT, values) == {}
+
+
+def test_propose_takes_an_export_already_in_place_and_stages_the_values(ingested, tmp_path):
+    customer = tmp_path / "c"
+    upload = customer / "uploads" / "ing1"
+    upload.mkdir(parents=True)
+    in_place = upload / "export.zip"
+    in_place.write_bytes(ingested.export.read_bytes())
+    session.propose(in_place, customer, CONTRACT, use_llm=False, ingestion="ing1")
+    assert [p.name for p in upload.iterdir()] == ["export.zip"]
+    values = read_json(customer / "staging" / "ing1" / "values.json")
+    mapping = read_json(customer / "staging" / "ing1" / "mapping.proposed.json")
+    punches = mapping["tables"]["punches"]
+    method = punches["columns"]["method"]["column"]
+    assert values[punches["sources"][0]][method]  # the punch methods, as written
+    assert all(0 < len(v) <= session.MAX_DISTINCT for t in values.values() for v in t.values())
 
 
 def test_apply_refuses_a_mapping_that_is_not_approved(ingested, tmp_path):
@@ -211,8 +244,12 @@ def _typed(ingested) -> dict[str, pd.DataFrame]:
 def test_a_missing_core_group_is_refused(ingested):
     tables = _typed(ingested)
     groups = tuple(g for g in wf.ALL_GROUPS if g != "payroll")
-    with pytest.raises(PreflightError, match="core data groups missing"):
+    with pytest.raises(PreflightError, match="core data groups missing") as refused:
         preflight(tables, groups)
+    assert (refused.value.code, refused.value.params) == (
+        "core_groups_missing",
+        {"groups": ["payroll"]},
+    )
 
 
 def test_a_short_history_shrinks_the_test_window_then_refuses(ingested, monkeypatch):
@@ -228,8 +265,11 @@ def test_a_short_history_shrinks_the_test_window_then_refuses(ingested, monkeypa
     assert report["spec_params"]["test_months"] == 4 and report["spec_params"]["low_confidence"]
     assert len(report["report"]["shorter_windows_tried"]) == 2
     cut = {**tables, "billing_monthly": billing[billing["period"] >= "2025-03-01"]}
-    with pytest.raises(PreflightError, match="not enough history"):
+    with pytest.raises(PreflightError, match="not enough history") as refused:
         preflight(cut, wf.ALL_GROUPS)
+    assert refused.value.code == "not_enough_history"
+    params = refused.value.params  # no window fits at all: no cancellations were counted
+    assert params["need_train"] == 1 and params["cancellations"] is None and params["train_start"]
 
 
 # ----------------------------------------------------------------------------- reading and safety
@@ -253,17 +293,18 @@ def _zip(tmp_path: Path, entries: dict[str, bytes]) -> Path:
 
 
 @pytest.mark.parametrize(
-    ("entries", "message"),
+    ("entries", "message", "code"),
     [
-        ({"../evil.csv": b"a\n1\n"}, "outside the archive"),
-        ({"inner.zip": b"PK"}, "archive inside"),
-        ({"bomb.csv": b"0" * 50_000_000}, "ratio"),
-        ({"readme.pdf": b"x"}, "no readable files"),
+        ({"../evil.csv": b"a\n1\n"}, "outside the archive", "archive_unsafe_path"),
+        ({"inner.zip": b"PK"}, "archive inside", "archive_nested"),
+        ({"bomb.csv": b"0" * 50_000_000}, "ratio", "archive_ratio"),
+        ({"readme.pdf": b"x"}, "no readable files", "archive_no_readable_files"),
     ],
 )
-def test_unsafe_archives_are_refused(tmp_path, entries, message):
-    with pytest.raises(UnsafeArchive, match=message):
+def test_unsafe_archives_are_refused(tmp_path, entries, message, code):
+    with pytest.raises(UnsafeArchive, match=message) as refused:
         ZipSource(_zip(tmp_path, entries)).fetch(tmp_path / "staging")
+    assert refused.value.code == code
 
 
 def test_hebrew_windows_encoding_is_read(tmp_path):

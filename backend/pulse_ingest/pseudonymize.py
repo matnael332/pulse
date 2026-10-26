@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import os
 import secrets
 from pathlib import Path
 
@@ -85,4 +86,6 @@ class EntityMap:
         ]
         frame = pd.DataFrame(rows, columns=MAP_COLUMNS).sort_values("pseudo_id")
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        frame.to_csv(self.path, index=False, encoding="utf-8", lineterminator="\n")
+        partial = self.path.with_name(self.path.name + ".tmp")
+        frame.to_csv(partial, index=False, encoding="utf-8", lineterminator="\n")
+        os.replace(partial, self.path)  # the site reads names from it at any moment
