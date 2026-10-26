@@ -17,9 +17,9 @@ synthetic generator (`uv run synth`, `SYNTH.md`) and the spec (`spec.py`), and t
 on it end to end in deterministic mode. The product is a hosted service: customers upload an
 export and run the pipeline on our server, one folder per customer (`--data-dir`, `--runs-dir`,
 `--artifacts-dir`, `--run-id`). One Docker image runs the pipeline, the dashboard, the API and
-the site's server on that server (`Dockerfile`, `compose.yaml`, `DEPLOY.md`). The site's backend
-(`pulse_server`) signs companies in with Google or Microsoft and lets an operator approve them;
-next: the web site itself, then upload and run from the site.
+the site on that server (`Dockerfile`, `compose.yaml`, `DEPLOY.md`). The site (`web/`, served by
+`pulse_server`) signs companies in with Google or Microsoft, in Hebrew or English, and lets an
+operator approve them; next: upload and run from the site.
 
 ## How it runs
 
@@ -53,7 +53,7 @@ honour.
 ```bash
 uv sync                                                            # Python 3.13 + locked deps
 uv run ruff check . && uv run ruff format --check .
-uv run pytest                                                      # 177 tests: toy spec, generator, workforce_saas spec, ingestion, server
+uv run pytest                                                      # 182 tests: toy spec, generator, workforce_saas spec, ingestion, server
 uv run synth --data-dir data                                       # workforce_saas raw data: 200 accounts, ~145 MB, < 1 min
 uv run python -m pulse_flow.run --no-llm --spec pulse_specs.workforce_saas.spec:SPEC --data-dir data   # full run, promotes to artifacts/
 uv run python -m pulse_flow.run --no-llm --spec tests.toy_spec:SPEC --data-dir <toy data> --no-promote
@@ -74,14 +74,27 @@ uv run pulse-ingest approve --customer-dir customer --ingestion <id>
 uv run pulse-ingest apply   --customer-dir customer --ingestion <id>          # prints the pipeline command
 ```
 
-The site's backend runs on its own (port 8100). Locally it uses a SQLite file in `var/` and
-customer folders in `customers/`; the dev login stands in for Google and Microsoft:
+The site: `pulse-server` (port 8100) serves the API and the built web site (`web/dist`). Locally it
+uses a SQLite file in `var/` and customer folders in `customers/`; the dev login stands in for
+Google and Microsoft. `PULSE_PUBLIC_URL` must be the address in the browser (writes from any other
+origin are refused):
 
 ```bash
+cd web && npm ci && npm run build && cd ..                         # Node 24; the site into web/dist
 PULSE_ENV=development PULSE_DEV_LOGIN=1 PULSE_OPERATOR_EMAILS=ops@example.com \
-  uv run pulse-server serve --migrate                              # http://127.0.0.1:8100/api/docs
+  uv run pulse-server serve --migrate                              # http://localhost:8100 (API docs: /api/docs)
 python scripts/server_smoke.py                                     # signup -> approval, end to end
 ```
+
+While working on the site, `npm run dev` in `web/` serves it on http://localhost:5173 with live
+reload and forwards `/api`, `/auth` and `/health` to the server; start the server with
+`PULSE_PUBLIC_URL=http://localhost:5173` then. `npm test` (Vitest), `npm run typecheck` and
+`npm run format:check` are what CI runs.
+
+The site is Hebrew or English (an English browser opens in English, any other in Hebrew; the
+switch is remembered), right-to-left in Hebrew, light or dark like the system, and one page per
+state: sign-in, the company's name, waiting for approval (or rejected, suspended), an active
+company's home, and the operator's companies screen.
 
 A user signs in (`/auth/{google,microsoft}/login`, or `POST /api/auth/dev-login`), names their
 company (`POST /api/signup/company`) and waits; an operator (`PULSE_OPERATOR_EMAILS`, verified
@@ -139,6 +152,7 @@ backend/
                      and the operator's approval; SQLAlchemy + Alembic (Postgres, SQLite locally)
   tests/             tests + toy_spec.py (the synthetic DatasetSpec they run on)
 frontend/            Streamlit dashboard (reads artifacts/ only): copilot, model, contract, runs
+web/                 the site (Vite, React, TypeScript, Mantine): pages, he/en dictionaries, theme
 scripts/             repository hygiene check, the server's smoke test
 Dockerfile           the server image; compose.yaml runs it, DEPLOY.md explains the server
 ```
