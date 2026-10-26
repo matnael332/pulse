@@ -7,7 +7,9 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
 
+from pulse_server import account, auth
 from pulse_server.db import make_engine
+from pulse_server.security import guard
 from pulse_server.settings import Settings
 
 
@@ -23,6 +25,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.engine = make_engine(settings.database_url)
     app.state.sessions = sessionmaker(app.state.engine, expire_on_commit=False)
+    app.middleware("http")(guard)
+    app.include_router(auth.router)
+    if settings.dev_login:
+        app.include_router(auth.dev_router)
+    app.include_router(account.router)
 
     @app.get("/health")
     def health(request: Request):
