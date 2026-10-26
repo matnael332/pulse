@@ -1,16 +1,6 @@
 """One ingestion, from an uploaded zip to a data folder the pipeline can run on.
 
-Customer folder layout (``customer_dir``):
-
-    uploads/<ingestion>/         the uploaded zip              (deleted by apply)
-    staging/<ingestion>/         extracted files, tables of strings (parquet), profile.json,
-                                 mapping.proposed.json         (deleted by apply)
-    mappings/v<N>.json           every approved mapping, by version
-    data/<ingestion>/raw/        the normalised raw layer (CSV + raw_schema.json + manifest.json)
-    data/<ingestion>/lookups/    empty (the spec needs none)
-    data/<ingestion>/spec_params.json, preflight.json
-    entity_map.csv               pseudonym <-> the customer's account id and name
-    secret.key                   the key of the employee, site and device hashes
+The customer folder's layout is in ``pulse_ingest.layout``.
 
 After ``apply`` nothing of the original export is left but the mapped columns, pseudonymised.
 """
@@ -20,6 +10,7 @@ from __future__ import annotations
 import json
 import shutil
 import uuid
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -29,6 +20,7 @@ from pulse_core.io import read_json, write_json_lf
 from pulse_core.raw import write_raw_dir
 from pulse_ingest import heuristics, llm
 from pulse_ingest.contract import IngestContract
+from pulse_ingest.layout import CustomerDir
 from pulse_ingest.mapping import Mapping
 from pulse_ingest.normalize import normalize
 from pulse_ingest.profile import fingerprint, profile_tables, to_json, union_groups
@@ -44,11 +36,12 @@ def new_ingestion_id() -> str:
 
 
 def _staging(customer_dir: Path, ingestion: str) -> Path:
-    return customer_dir / "staging" / ingestion
+    return CustomerDir(customer_dir).staging(ingestion)
 
 
 def latest_approved(customer_dir: Path) -> Mapping | None:
-    versions = sorted((customer_dir / "mappings").glob("v*.json"), key=lambda p: int(p.stem[1:]))
+    mappings = CustomerDir(customer_dir).mappings
+    versions = sorted(mappings.glob("v*.json"), key=lambda p: int(p.stem[1:]))
     return Mapping.model_validate(read_json(versions[-1])) if versions else None
 
 
@@ -63,7 +56,7 @@ def propose(
 ) -> tuple[str, Mapping]:
     """Stage the export and write ``mapping.proposed.json``; returns the ingestion id."""
     ingestion = ingestion or new_ingestion_id()
-    upload = customer_dir / "uploads" / ingestion
+    upload = CustomerDir(customer_dir).uploads(ingestion)
     staging = _staging(customer_dir, ingestion)
     upload.mkdir(parents=True)
     staging.mkdir(parents=True)
@@ -122,19 +115,18 @@ def approve(customer_dir: Path, ingestion: str, mapping_path: Path | None = None
 
 def apply(customer_dir: Path, ingestion: str, contract: IngestContract) -> dict:
     """Normalise, preflight and write data/<ingestion>/; then delete the export's originals."""
-    staging = _staging(customer_dir, ingestion)
+    layout = CustomerDir(customer_dir)
+    staging = layout.staging(ingestion)
     mapping = Mapping.model_validate(read_json(staging / "mapping.proposed.json"))
     index = read_json(staging / "tables.json")
     tables = {name: pd.read_parquet(staging / "tables" / file) for name, file in index.items()}
     present = contract.groups_present(list(mapping.tables))
     kept = [t.name for t in contract.tables if t.group in present and t.name in mapping.tables]
     mapping.tables = {name: mapping.tables[name] for name in kept}
-    entity_map = EntityMap(customer_dir / "entity_map.csv")
-    built = normalize(
-        mapping, contract, tables, entity_map, load_secret(customer_dir / "secret.key")
-    )
+    entity_map = EntityMap(layout.entity_map)
+    built = normalize(mapping, contract, tables, entity_map, load_secret(layout.secret))
     result = contract.preflight(built, present) if contract.preflight else {"spec_params": {}}
-    data = customer_dir / "data" / ingestion
+    data = layout.data(ingestion)
     write_raw_dir(
         built,
         contract.raw_schema(kept),
@@ -148,30 +140,46 @@ def apply(customer_dir: Path, ingestion: str, contract: IngestContract) -> dict:
     entity_map.save()
     previous = latest_approved(customer_dir)
     if not previous or previous.model_dump() != mapping.model_dump():
-        (customer_dir / "mappings").mkdir(parents=True, exist_ok=True)
+        layout.mappings.mkdir(parents=True, exist_ok=True)
         write_json_lf(
-            customer_dir / "mappings" / f"v{mapping.version}.json",
+            layout.mappings / f"v{mapping.version}.json",
             mapping.model_dump(),
             ndigits=None,
         )
-    shutil.rmtree(customer_dir / "uploads" / ingestion, ignore_errors=True)
+    shutil.rmtree(layout.uploads(ingestion), ignore_errors=True)
     shutil.rmtree(staging, ignore_errors=True)
     return {"data_dir": data, **result}
 
 
-def pipeline_command(data_dir: Path, contract: IngestContract) -> list[str]:
+def pipeline_command(
+    customer_dir: Path,
+    ingestion: str,
+    contract: IngestContract,
+    *,
+    llm: bool = False,
+    launcher: Sequence[str] = ("uv", "run", "python"),
+) -> list[str]:
+    """The pipeline run on an applied ingestion, into the customer's runs/ and artifacts/.
+
+    ``launcher`` starts Python: ``uv run python`` from a checkout, ``(sys.executable,)`` inside
+    the image (where ``uv run`` would try to sync the dev tools)."""
+    layout = CustomerDir(customer_dir)
+    data = layout.data(ingestion)
     return [
-        "uv",
-        "run",
-        "python",
+        *launcher,
         "-m",
         "pulse_flow.run",
+        *([] if llm else ["--no-llm"]),
         "--spec",
         contract.spec_ref,
         "--spec-params",
-        str(data_dir / "spec_params.json"),
+        str(data / "spec_params.json"),
         "--data-dir",
-        str(data_dir),
+        str(data),
+        "--runs-dir",
+        str(layout.runs),
+        "--artifacts-dir",
+        str(layout.artifacts),
     ]
 
 
