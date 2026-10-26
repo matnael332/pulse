@@ -1,0 +1,204 @@
+import { DirectionProvider, MantineProvider } from "@mantine/core";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
+import { describe, expect, it, vi } from "vitest";
+
+import type { Me } from "./api";
+import { App } from "./App";
+import { DICTIONARIES, detectLanguage, I18nProvider, translate } from "./i18n";
+import { SessionProvider } from "./session";
+import { theme } from "./theme";
+
+type Reply = { status?: number; body?: unknown };
+type Handler = (init: RequestInit | undefined) => Reply;
+
+/** A fake server: "METHOD /api/path" -> handler; anything else is a 404. */
+function serve(routes: Record<string, Handler | Reply>) {
+  const calls: { key: string; body: unknown }[] = [];
+  const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+    const key = `${init?.method ?? "GET"} ${url}`;
+    calls.push({ key, body: init?.body ? JSON.parse(init.body as string) : undefined });
+    const route = routes[key];
+    const reply = typeof route === "function" ? route(init) : (route ?? { status: 404 });
+    const status = reply.status ?? 200;
+    return new Response(status === 204 ? null : JSON.stringify(reply.body ?? {}), { status });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return calls;
+}
+
+function renderAt(path: string, lang = "he") {
+  localStorage.setItem("pulse.lang", lang); // jsdom's browser is English
+  return render(
+    <DirectionProvider>
+      <MantineProvider theme={theme} env="test">
+        <I18nProvider>
+          <SessionProvider>
+            <MemoryRouter initialEntries={[path]}>
+              <App />
+            </MemoryRouter>
+          </SessionProvider>
+        </I18nProvider>
+      </MantineProvider>
+    </DirectionProvider>,
+  );
+}
+
+const he = (key: keyof typeof DICTIONARIES.he, values?: Record<string, string>) =>
+  translate("he", key, values);
+
+function me(state: Me["state"], company: Partial<NonNullable<Me["company"]>> | null = null): Me {
+  return {
+    user: { email: "dana@acme.example", name: "Dana", provider: "google", email_verified: true },
+    is_operator: state === "operator",
+    company: company && {
+      id: 1,
+      name: "Acme",
+      slug: null,
+      status: "pending",
+      created_at: "2026-10-26T10:00:00Z",
+      decided_at: null,
+      note: null,
+      ...company,
+    },
+    state,
+  };
+}
+
+describe("language", () => {
+  it("follows the browser: English for English, Hebrew otherwise, the saved choice first", () => {
+    expect(detectLanguage(null, ["en-US", "he"])).toBe("en");
+    expect(detectLanguage(null, ["he-IL"])).toBe("he");
+    expect(detectLanguage(null, ["fr-FR"])).toBe("he");
+    expect(detectLanguage(null, [])).toBe("he");
+    expect(detectLanguage("en", ["he-IL"])).toBe("en");
+  });
+
+  it("switches the page's language and direction, and remembers it", async () => {
+    serve({
+      "GET /api/me": { status: 401 },
+      "GET /api/auth/providers": { body: { providers: [] } },
+    });
+    renderAt("/");
+    expect(await screen.findByText(he("login.none"))).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "English" }));
+    expect(await screen.findByText(translate("en", "login.none"))).toBeInTheDocument();
+    expect(document.documentElement.dir).toBe("ltr");
+    expect(localStorage.getItem("pulse.lang")).toBe("en");
+  });
+});
+
+describe("the gate", () => {
+  it("sends a visitor to the sign-in page with the configured providers", async () => {
+    serve({
+      "GET /api/me": { status: 401 },
+      "GET /api/auth/providers": { body: { providers: ["google", "microsoft"] } },
+    });
+    renderAt("/operator");
+    const google = await screen.findByRole("link", { name: he("login.google") });
+    expect(google).toHaveAttribute("href", "/auth/google/login");
+    expect(screen.getByRole("link", { name: he("login.microsoft") })).toBeInTheDocument();
+    expect(screen.queryByText(he("login.dev"))).not.toBeInTheDocument();
+  });
+
+  it("shows a failed sign-in", async () => {
+    serve({
+      "GET /api/me": { status: 401 },
+      "GET /api/auth/providers": { body: { providers: ["google"] } },
+    });
+    renderAt("/login?error=signin");
+    expect(await screen.findByText(he("login.failed"))).toBeInTheDocument();
+  });
+
+  it("lets a new user name the company, then shows it pending", async () => {
+    let current = me("needs_company");
+    const calls = serve({
+      "GET /api/me": () => ({ body: current }),
+      "POST /api/signup/company": () => {
+        current = me("pending", { name: "Acme" });
+        return { status: 201, body: current.company };
+      },
+    });
+    renderAt("/");
+    await userEvent.type(await screen.findByLabelText(he("welcome.name")), "Acme");
+    await userEvent.click(screen.getByRole("button", { name: he("welcome.submit") }));
+    expect(await screen.findByText(he("status.pending.title"))).toBeInTheDocument();
+    expect(calls.find((c) => c.key === "POST /api/signup/company")?.body).toEqual({ name: "Acme" });
+  });
+
+  it("shows a rejected company the operator's note", async () => {
+    serve({ "GET /api/me": { body: me("rejected", { status: "rejected", note: "not a fit" }) } });
+    renderAt("/");
+    expect(await screen.findByText(he("status.rejected.title"))).toBeInTheDocument();
+    expect(screen.getByText(he("status.reason", { note: "not a fit" }))).toBeInTheDocument();
+  });
+
+  it("opens an active company's home", async () => {
+    const company = {
+      ...me("active", { status: "active", slug: "acme" }).company,
+      has_model: false,
+    };
+    serve({
+      "GET /api/me": { body: me("active", { status: "active", slug: "acme" }) },
+      "GET /api/company": { body: company },
+    });
+    renderAt("/status");
+    expect(await screen.findByText(he("home.next.title"))).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Acme" })).toBeInTheDocument();
+  });
+});
+
+describe("the operator", () => {
+  it("approves a pending company with a folder name", async () => {
+    let pending = [
+      {
+        ...me("pending", { id: 7, name: "Beta" }).company!,
+        user_email: "owner@beta.example",
+      },
+    ];
+    const calls = serve({
+      "GET /api/me": { body: me("operator") },
+      "GET /api/admin/companies?status=pending": () => ({ body: { companies: pending } }),
+      "POST /api/admin/companies/7/approve": () => {
+        const row = { ...pending[0], status: "active", slug: "beta" };
+        pending = [];
+        return { body: row };
+      },
+    });
+    renderAt("/");
+    const row = (await screen.findByText("Beta")).closest("tr")!;
+    expect(within(row).getByText("owner@beta.example")).toBeInTheDocument();
+    await userEvent.click(within(row).getByRole("button", { name: he("operator.approve") }));
+    await userEvent.type(
+      await screen.findByLabelText(he("operator.slug"), { exact: false }),
+      "beta",
+    );
+    await userEvent.click(screen.getByRole("button", { name: he("operator.confirm") }));
+    expect(await screen.findByText(he("operator.empty"))).toBeInTheDocument();
+    expect(calls.find((c) => c.key === "POST /api/admin/companies/7/approve")?.body).toEqual({
+      slug: "beta",
+    });
+  });
+
+  it("shows the server's refusal in the dialog", async () => {
+    serve({
+      "GET /api/me": { body: me("operator") },
+      "GET /api/admin/companies?status=pending": {
+        body: {
+          companies: [
+            { ...me("pending", { id: 3, name: "Gamma" }).company!, user_email: "g@g.example" },
+          ],
+        },
+      },
+      "POST /api/admin/companies/3/approve": {
+        status: 409,
+        body: { detail: "the slug gamma is taken" },
+      },
+    });
+    renderAt("/operator");
+    await userEvent.click(await screen.findByRole("button", { name: he("operator.approve") }));
+    await userEvent.click(await screen.findByRole("button", { name: he("operator.confirm") }));
+    await waitFor(() => expect(screen.getByText("the slug gamma is taken")).toBeInTheDocument());
+  });
+});
