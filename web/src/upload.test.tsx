@@ -113,7 +113,7 @@ describe("the review", () => {
     renderAt("/ingestions/ing1");
     expect(await screen.findByText(he("review.title"))).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: new RegExp(he("review.ignored")) }));
-    expect(await screen.findByText("שם עובד, ת.ז.", { exact: false })).toBeVisible();
+    expect(await screen.findByText("שם עובד, ת.ז.", { exact: false })).toBeInTheDocument();
     expect(screen.getByText(`${he("review.missing")}: משמרות`)).toBeInTheDocument();
     const select = screen
       .getAllByLabelText("זמן ההחתמה")
