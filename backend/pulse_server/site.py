@@ -42,7 +42,7 @@ def mount_site(app: FastAPI, web_dir: Path) -> None:
     def no_such_api(path: str) -> None:
         raise HTTPException(404, "not found")  # any method: an unknown API path is 404, not 405
 
-    @app.get("/{path:path}", include_in_schema=False)
+    @app.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
     def site(path: str) -> FileResponse:
         if path.split("/", 1)[0] in NOT_SITE:
             raise HTTPException(404, "not found")

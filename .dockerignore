@@ -11,12 +11,17 @@
 .pytest_cache
 .ruff_cache
 
+# The web site is built inside the image (its own stage)
+web/node_modules
+web/dist
+
 # Data and outputs live in the server volume, never in the image
 data
 artifacts
 artifacts.*
 runs
 customers
+var
 
 # Secrets
 .env

@@ -45,6 +45,19 @@ jobs:
         run: uv run pytest -q
       - name: Repository hygiene (secrets, file sizes)
         run: uv run python scripts/check_repo_hygiene.py
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Web site (install, format, types, tests, build)
+        working-directory: web
+        run: |
+          npm ci --no-audit --no-fund
+          npm run format:check
+          npm run typecheck
+          npm test
+          npm run build
 
 
   docker:
@@ -86,6 +99,7 @@ jobs:
           docker compose up -d --wait --wait-timeout 180 server
           python3 scripts/server_smoke.py http://127.0.0.1:8100
           docker compose exec -T server test -d /srv/pulse/customers/acme/data
+          curl -fsS http://127.0.0.1:8100/login | grep -q 'id="root"'
       - name: The server restarts on a migrated database
         run: |
           docker compose restart server
