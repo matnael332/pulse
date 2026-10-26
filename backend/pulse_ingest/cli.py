@@ -5,7 +5,8 @@
     uv run pulse-ingest apply   --customer-dir C --ingestion ID
 
 ``propose`` prints the mapping summary and what needs a look; nothing is applied before a person
-approves it. ``apply`` prints the pipeline command for the new data folder.
+approves it. ``apply`` prints the pipeline command for the new data folder, into the customer's
+runs/ and artifacts/ (deterministic with ``--no-llm`` or without a GEMINI_API_KEY).
 
 Exit codes: 0 done, 1 the export or the mapping was refused (the message says why).
 """
@@ -49,11 +50,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     contract = load_contract(args.contract)
     customer = Path(args.customer_dir)
+    use_llm = not args.no_llm and bool(os.getenv("GEMINI_API_KEY"))
     try:
         if args.command == "propose":
             if not args.zip:
                 parser.error("propose needs the zip file")
-            use_llm = not args.no_llm and bool(os.getenv("GEMINI_API_KEY"))
             ingestion, mapping = session.propose(
                 Path(args.zip), customer, contract, use_llm=use_llm
             )
@@ -68,7 +69,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             result = session.apply(customer, args.ingestion, contract)
             print(session.describe(result))
-            command = session.pipeline_command(result["data_dir"], contract)
+            command = session.pipeline_command(customer, args.ingestion, contract, llm=use_llm)
             print("\nrun the pipeline:\n  " + shlex.join(command))
     except (UnsafeArchive, MappingError, PreflightError) as exc:
         print(f"refused: {exc}", file=sys.stderr)

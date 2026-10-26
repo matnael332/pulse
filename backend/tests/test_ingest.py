@@ -14,6 +14,7 @@ from pulse_core.raw import load_raw_tables
 from pulse_core.stages import run_analyst_stage
 from pulse_ingest import heuristics, llm, session
 from pulse_ingest.contract import PreflightError
+from pulse_ingest.layout import CustomerDir
 from pulse_ingest.llm_payloads import mapping_payload
 from pulse_ingest.normalize import MappingError
 from pulse_ingest.profile import infer_kind, profile_tables
@@ -278,29 +279,38 @@ def test_a_dirty_export_without_optional_groups_runs_end_to_end(tmp_path):
 
     raw = write_dataset(tmp_path / "synth", SynthConfig(accounts=80))  # with the planted dirt
     export = scramble(raw, tmp_path / "export.zip", drop_groups=("shifts", "money"))
-    _ingestion, result = _ingest(export, tmp_path / "customer")
+    ingestion, result = _ingest(export, tmp_path / "customer")
     data = result["data_dir"]
     params = result["spec_params"]
     assert "shifts" not in params["groups"] and "money" not in params["groups"]
     assert "shifts.csv" not in read_json(data / "raw" / "manifest.json")["files"]
-    code = main(
-        [
-            "--no-llm",
-            "--spec",
-            CONTRACT.spec_ref,
-            "--spec-params",
-            str(data / "spec_params.json"),
-            "--data-dir",
-            str(data),
-            "--runs-dir",
-            str(tmp_path / "runs"),
-            "--artifacts-dir",
-            str(tmp_path / "artifacts"),
-            "--run-id",
-            "dirty",
-        ]
-    )
+    command = session.pipeline_command(tmp_path / "customer", ingestion, CONTRACT)
+    assert command[:3] == ["uv", "run", "python"] and "--no-llm" in command
+    code = main([*command[5:], "--run-id", "dirty"])  # after `uv run python -m pulse_flow.run`
     assert code == 0
-    contract = read_json(tmp_path / "artifacts" / "dataset_contract.json")
+    artifacts = tmp_path / "customer" / "artifacts"
+    contract = read_json(artifacts / "dataset_contract.json")
     assert contract["data_groups"]["missing"] == ["shifts", "money"]
-    assert (tmp_path / "artifacts" / "scores_current.csv").exists()
+    assert (artifacts / "scores_current.csv").exists()
+    assert (tmp_path / "customer" / "runs" / "dirty" / "run_status.json").exists()
+
+
+def test_the_pipeline_command_follows_the_customer_layout(tmp_path):
+    command = session.pipeline_command(
+        tmp_path, "ing1", CONTRACT, llm=True, launcher=("/venv/bin/python",)
+    )
+    assert command[:3] == ["/venv/bin/python", "-m", "pulse_flow.run"]
+    assert "--no-llm" not in command
+    flags = dict(zip(command[3::2], command[4::2], strict=True))
+    assert flags == {
+        "--spec": CONTRACT.spec_ref,
+        "--spec-params": str(tmp_path / "data" / "ing1" / "spec_params.json"),
+        "--data-dir": str(tmp_path / "data" / "ing1"),
+        "--runs-dir": str(tmp_path / "runs"),
+        "--artifacts-dir": str(tmp_path / "artifacts"),
+    }
+
+
+def test_a_new_customer_folder_is_created_once(tmp_path):
+    layout = CustomerDir(tmp_path / "acme").create().create()
+    assert all(p.is_dir() for p in (layout.root / "data", layout.runs, layout.artifacts))
