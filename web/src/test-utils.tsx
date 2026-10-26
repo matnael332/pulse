@@ -8,7 +8,7 @@ import type { Me } from "./api";
 import { App } from "./App";
 import { I18nProvider, type Key, translate } from "./i18n";
 import { SessionProvider } from "./session";
-import { theme } from "./theme";
+import { cssVariables, theme } from "./theme";
 
 type Reply = { status?: number; body?: unknown };
 type Handler = (init: RequestInit | undefined) => Reply;
@@ -32,7 +32,12 @@ export function renderAt(path: string, lang = "he") {
   localStorage.setItem("pulse.lang", lang); // jsdom's browser is English
   return render(
     <DirectionProvider>
-      <MantineProvider theme={theme} env="test">
+      <MantineProvider
+        theme={theme}
+        cssVariablesResolver={cssVariables}
+        forceColorScheme="dark"
+        env="test"
+      >
         <I18nProvider>
           <SessionProvider>
             <MemoryRouter initialEntries={[path]}>

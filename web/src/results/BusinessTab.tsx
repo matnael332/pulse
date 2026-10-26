@@ -25,7 +25,8 @@ import { label } from "../labels";
 import { download, riskCsv } from "./csv";
 
 const PAGE = 50;
-const LEVEL_COLOR = { high: "red", elevated: "orange", normal: "gray" } as const;
+// One signal colour: high risk is red, elevated is plain white (bold), normal is grey.
+const LEVEL_COLOR = { high: "red", elevated: "gray.0", normal: "gray" } as const;
 type Filter = "all" | ScoredAccount["level"];
 
 function number(value: number, digits = 2): string {
@@ -77,7 +78,7 @@ export function BusinessTab({ results }: { results: Results }) {
             [
               ["run.accounts", summary.accounts, undefined],
               ["run.high", summary.high, "red"],
-              ["run.elevated", summary.elevated, "orange"],
+              ["run.elevated", summary.elevated, undefined],
               ["run.normal", summary.normal, undefined],
             ] as const
           ).map(([key, count, color]) => (
@@ -256,7 +257,7 @@ export function BusinessTab({ results }: { results: Results }) {
               level: label.risk(level, lang),
               count: results.distribution.levels[level] ?? 0,
             }))}
-            series={[{ name: "count", label: t("run.accounts"), color: "accent.5" }]}
+            series={[{ name: "count", label: t("run.accounts"), color: "gray.0" }]}
             withTooltip
           />
         </Card>
@@ -268,7 +269,7 @@ export function BusinessTab({ results }: { results: Results }) {
             h={240}
             dataKey="month"
             data={results.trend.map((p) => ({ month: p.month, rate: (p.rate ?? 0) * 100 }))}
-            series={[{ name: "rate", label: t("results.rate"), color: "accent.5" }]}
+            series={[{ name: "rate", label: t("results.rate"), color: "gray.0" }]}
             valueFormatter={(v) => `${v.toFixed(1)}%`}
             curveType="monotone"
             withDots={false}
@@ -303,7 +304,7 @@ export function BusinessTab({ results }: { results: Results }) {
             </Text>
           )}
           {results.data.low_confidence && (
-            <Alert color="yellow" variant="light">
+            <Alert color="gray" variant="light">
               {t("results.lowConfidence")}
             </Alert>
           )}

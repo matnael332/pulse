@@ -1,23 +1,51 @@
-/* The page behind the cards: Apple's light grey, or black in the dark. */
-:root[data-mantine-color-scheme="light"] body {
-  background: #f5f5f7;
-}
-
-:root[data-mantine-color-scheme="dark"] body {
-  background: #000;
+/* The page's tokens: black ground, white ink, one red. Everything else references these. */
+:root {
+  --pulse-ground: #000000;
+  --pulse-surface: #0a0a0a;
+  --pulse-raised: #161616;
+  --pulse-line: #1f1f1f;
+  --pulse-outline: #3a3a3f;
+  --pulse-ink: #ffffff;
+  --pulse-muted: #b4b4b4;
+  --pulse-soft: #949494;
+  --pulse-red: #ff453a;
+  --pulse-red-tint: #2a0e0c;
+  --pulse-font-text:
+    "Noto Sans Hebrew Variable", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  --pulse-font-display: "Barlow Condensed", var(--pulse-font-text);
+  color-scheme: dark;
 }
 
 body {
+  background: var(--pulse-ground);
+  -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Tight display headings suit Latin letters only; Hebrew keeps its natural spacing. */
-:lang(en) h1,
-:lang(en) h2 {
-  letter-spacing: -0.022em;
+/* Display type: Barlow Condensed for Latin and figures; Hebrew falls through to Noto, narrowed. */
+h1,
+h2,
+h3 {
+  font-stretch: 72%;
+}
+
+/* Figures that line up. */
+.figures {
+  font-family: var(--pulse-font-display);
+  font-variant-numeric: tabular-nums;
 }
 
 .hairline {
-  border: 1px solid light-dark(rgba(0, 0, 0, 0.08), rgba(255, 255, 255, 0.1));
+  border: 1px solid var(--pulse-line);
+}
+
+:focus-visible {
+  outline: 2px solid var(--pulse-ink);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--pulse-ink);
+  color: var(--pulse-ground);
 }

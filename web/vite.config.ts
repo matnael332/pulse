@@ -12,7 +12,8 @@ export default defineConfig({
     proxy: { "/api": server, "/auth": server, "/health": server },
   },
   // one bundle for now (~160 kB gzipped); split it when the data screens arrive
-  build: { outDir: "dist", emptyOutDir: true, chunkSizeWarningLimit: 700 },
+  // assetsInlineLimit 0: every file is served from the site (the CSP refuses data: fonts)
+  build: { outDir: "dist", emptyOutDir: true, chunkSizeWarningLimit: 700, assetsInlineLimit: 0 },
   test: {
     environment: "jsdom",
     globals: true,
