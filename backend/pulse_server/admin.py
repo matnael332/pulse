@@ -13,7 +13,7 @@ from pulse_server.account import company_json
 from pulse_server.deps import Config, Db, Operator
 from pulse_server.models import Company
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
 def _row(company: Company) -> dict:

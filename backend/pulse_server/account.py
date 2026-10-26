@@ -1,6 +1,6 @@
 """The signed-in user's own view: who am I, and where does my company stand.
 
-A new user names their company once (``/signup/company``); it waits, pending, for an operator.
+A new user names their company once (``/api/signup/company``); it waits, pending, for an operator.
 Operators run the site and have no company of their own.
 """
 
@@ -15,7 +15,7 @@ from pulse_server.models import Company, User
 from pulse_server.security import audit
 from pulse_server.settings import Settings
 
-router = APIRouter(tags=["account"])
+router = APIRouter(prefix="/api", tags=["account"])
 
 
 def company_json(company: Company) -> dict:

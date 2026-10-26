@@ -110,7 +110,7 @@ http://localhost:8100/health (server). Signing in through the tunnel needs
 | Show another customer | set `PULSE_CUSTOMER=<slug>` in `.env`, then `docker compose up -d` |
 | Update to a new version | `git pull && docker compose up -d --build` |
 | Logs | `docker compose logs -f dashboard api server` |
-| Approve a company | sign in as an operator, then `POST /admin/companies/<id>/approve` (the web site comes in step 6.4) |
+| Approve a company | sign in as an operator, then `POST /api/admin/companies/<id>/approve` (the web site comes in step 6.4) |
 | Back up the server's database | `docker compose exec -T postgres pg_dump -U pulse pulse > pulse-db-$(date +%F).sql` |
 | Back up all customer data | `docker run --rm -v pulse_pulse-data:/srv/pulse -v "$PWD":/backup busybox tar czf /backup/pulse-data-$(date +%F).tgz -C /srv pulse` |
 | Stop | `docker compose down` (the volume stays; `down -v` deletes it with all customer data) |
