@@ -94,10 +94,10 @@ jobs:
           PULSE_SECRET_KEY=ci-only-not-a-secret-0123456789abcdef
           PULSE_OPERATOR_EMAILS=ops@example.com
           ENV
-      - name: The server on Postgres, from signup to approval
+      - name: The site on Postgres, from signup to approval, then the demo to a finished run
         run: |
-          docker compose up -d --wait --wait-timeout 180 server
-          python3 scripts/server_smoke.py http://127.0.0.1:8100
+          docker compose up -d --wait --wait-timeout 180 server worker
+          python3 scripts/server_smoke.py http://127.0.0.1:8100 --demo
           docker compose exec -T server test -d /srv/pulse/customers/acme/data
           curl -fsS http://127.0.0.1:8100/login | grep -q 'id="root"'
       - name: The server restarts on a migrated database

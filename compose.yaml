@@ -1,5 +1,5 @@
-# pulse on our server: the dashboard, the API and the site's server stay up (the server on
-# Postgres), `job` runs the pipeline on demand.
+# pulse on our server: the dashboard, the API, the site (on Postgres) and its worker stay up;
+# `job` runs commands on demand.
 #
 #   docker compose build
 #   docker compose run --rm job synth --data-dir /srv/pulse/customers/demo/data/synth
@@ -23,6 +23,12 @@ x-pulse: &pulse
     RUNS_DIR: /srv/pulse/customers/${PULSE_CUSTOMER:-demo}/runs
   volumes:
     - pulse-data:/srv/pulse
+
+# The site's server and its worker share the database, the customer folders and a work folder.
+x-server-env: &server-env
+  PULSE_DATABASE_URL: postgresql+psycopg://pulse:${POSTGRES_PASSWORD:-pulse}@postgres:5432/pulse
+  PULSE_CUSTOMERS_ROOT: /srv/pulse/customers
+  PULSE_WORK_DIR: /srv/pulse/work
 
 services:
   dashboard:
@@ -66,9 +72,8 @@ services:
     <<: *pulse
     command: ["pulse-server", "serve", "--migrate"]
     environment:
+      <<: *server-env
       PORT: "8100"
-      PULSE_DATABASE_URL: postgresql+psycopg://pulse:${POSTGRES_PASSWORD:-pulse}@postgres:5432/pulse
-      PULSE_CUSTOMERS_ROOT: /srv/pulse/customers
     ports:
       - "127.0.0.1:8100:8100"
     depends_on:
@@ -81,6 +86,19 @@ services:
       timeout: 10s
       start_period: 30s
       retries: 3
+
+  # Uploads, ingestion and pipeline runs, one at a time (a step holds a whole export in memory).
+  worker:
+    <<: *pulse
+    command: ["pulse-server", "worker"]
+    environment:
+      <<: *server-env
+    depends_on:
+      server:
+        condition: service_healthy
+    restart: unless-stopped
+    stop_grace_period: 30s
+    mem_limit: 6g
 
   # The server's database on this machine (step 6.9 moves it to a managed Postgres).
   postgres:
