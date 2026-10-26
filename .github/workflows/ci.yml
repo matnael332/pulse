@@ -73,6 +73,24 @@ jobs:
           health = json.load(sys.stdin)
           print(health["status"], health.get("model"), health.get("reason", ""))
           sys.exit(health["status"] != "ok")'
+      - name: Server settings for CI (dev login, one operator; never used in production)
+        run: |
+          cat > .env <<'ENV'
+          PULSE_ENV=development
+          PULSE_DEV_LOGIN=1
+          PULSE_SECRET_KEY=ci-only-not-a-secret-0123456789abcdef
+          PULSE_OPERATOR_EMAILS=ops@example.com
+          ENV
+      - name: The server on Postgres, from signup to approval
+        run: |
+          docker compose up -d --wait --wait-timeout 180 server
+          python3 scripts/server_smoke.py http://127.0.0.1:8100
+          docker compose exec -T server test -d /srv/pulse/customers/acme/data
+      - name: The server restarts on a migrated database
+        run: |
+          docker compose restart server
+          docker compose up -d --wait --wait-timeout 120 server
+          curl -fsS http://127.0.0.1:8100/health
       - name: Container logs
         if: failure()
         run: docker compose logs --no-color
