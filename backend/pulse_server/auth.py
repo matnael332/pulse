@@ -10,7 +10,8 @@ The site's own calls live under ``/api/auth`` (providers, logout, the dev login)
 browser navigations of a sign-in stay at ``/auth``, where the redirect URIs point.
 
 The dev login (any address, no password) exists only when PULSE_DEV_LOGIN is on, which the
-settings refuse in production. It stands in for Google and Microsoft in tests and on a laptop.
+settings refuse in production. It stands in for Google and Microsoft in tests and on a laptop,
+as a form (POST) and as a link (GET, for tools that open a fresh browser).
 """
 
 from __future__ import annotations
@@ -18,8 +19,9 @@ from __future__ import annotations
 import hmac
 import logging
 import secrets
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 from pydantic import BaseModel, Field
@@ -35,6 +37,7 @@ from pulse_server.settings import Settings
 STATE_COOKIE = "pulse_oidc"
 LOGIN_PAGE = "/login"
 STATE_SECONDS = 600
+EMAIL = r"^[^@\s]+@[^@\s]+$"
 
 log = logging.getLogger("pulse_server.auth")
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -157,7 +160,7 @@ def logout(request: Request, db: Db, settings: Config) -> Response:
 
 
 class DevLogin(BaseModel):
-    email: str = Field(pattern=r"^[^@\s]+@[^@\s]+$", max_length=320)
+    email: str = Field(pattern=EMAIL, max_length=320)
     name: str | None = Field(default=None, max_length=200)
 
 
@@ -166,5 +169,19 @@ def dev_login(body: DevLogin, db: Db, settings: Config) -> Response:
     email = body.email.lower()
     user = upsert_user(db, "dev", email, email, True, body.name)
     response = Response(status_code=204)
+    sign_in(db, user, response, settings)
+    return response
+
+
+@dev_router.get("/dev-login")
+def dev_login_link(
+    db: Db,
+    settings: Config,
+    email: Annotated[str, Query(pattern=EMAIL, max_length=320)],
+    next: str | None = None,
+):
+    """The dev login as a link, for tools that open a fresh browser (the design inspector)."""
+    user = upsert_user(db, "dev", email.lower(), email.lower(), True, None)
+    response = RedirectResponse(safe_next(next), 302)
     sign_in(db, user, response, settings)
     return response
