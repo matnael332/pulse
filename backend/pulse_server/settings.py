@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     dev_login: bool = False
     database_url: str = "sqlite:///./var/pulse-server.db"
     customers_root: Path = Path("customers")
+    web_dir: Path = Path("web/dist")  # the built web site
     public_url: str = "http://localhost:8100"
     secret_key: str = ""
     operator_emails: str = ""  # comma-separated

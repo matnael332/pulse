@@ -2,8 +2,8 @@
 
 The session cookie holds a random token; the database keeps only its sha256, so a leaked
 database row cannot be replayed. Every sign-in issues a new token. Writes from another origin
-are refused (SameSite=Lax covers the rest), and every response carries no-store and the usual
-hardening headers.
+are refused (SameSite=Lax covers the rest), and every response carries the usual hardening
+headers and no-store (the site's content-hashed assets: a year's cache).
 """
 
 from __future__ import annotations
@@ -25,8 +25,9 @@ HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "same-origin",
-    "Cache-Control": "no-store",
 }
+NO_STORE = "no-store"
+IMMUTABLE = "public, max-age=31536000, immutable"  # content-hashed site assets
 
 
 def new_token() -> str:
@@ -112,4 +113,6 @@ async def guard(request: Request, call_next) -> Response:
     response = await call_next(request)
     for name, value in HEADERS.items():
         response.headers.setdefault(name, value)
+    asset = request.url.path.startswith("/assets/") and response.status_code == 200
+    response.headers.setdefault("Cache-Control", IMMUTABLE if asset else NO_STORE)
     return response
