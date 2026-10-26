@@ -24,6 +24,17 @@ dependencies = [
     "openpyxl>=3.1,<4",
     "charset-normalizer>=3.4,<4",
     "pyarrow>=21",
+    # the server: web framework, database and migrations, sign-in (OIDC), settings
+    "fastapi>=0.141,<0.142",
+    "uvicorn>=0.54,<0.55",
+    "sqlalchemy>=2.1,<2.2",
+    "alembic>=1.20,<2",
+    "psycopg[binary]>=3.3,<4",
+    "httpx>=0.28,<0.29",
+    "pyjwt[crypto]>=2.15,<3",
+    "pydantic>=2.12,<3",
+    "pydantic-settings>=2.10,<3",
+    "itsdangerous>=2.2,<3",
 ]
 
 [dependency-groups]
@@ -50,6 +61,7 @@ plot = "pulse_flow.run:plot"
 pulse-api = "pulse_api.serve:main"
 synth = "pulse_specs.workforce_saas.synth:main"
 pulse-ingest = "pulse_ingest.cli:main"
+pulse-server = "pulse_server.cli:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -63,6 +75,7 @@ packages = [
     "backend/pulse_copilot",
     "backend/pulse_specs",
     "backend/pulse_ingest",
+    "backend/pulse_server",
 ]
 
 [tool.crewai]
@@ -89,4 +102,8 @@ markers = [
     "slow: full-data runs (deselected by default)",
 ]
 addopts = "-m 'not llm and not slow' --timeout=300 --timeout-method=thread"
-filterwarnings = ["ignore::DeprecationWarning:crewai.*"]
+filterwarnings = [
+    "ignore::DeprecationWarning:crewai.*",
+    # FastAPI's TestClient still runs on httpx (the server itself does not use the test client)
+    "ignore:Using `httpx` with `starlette.testclient`",
+]

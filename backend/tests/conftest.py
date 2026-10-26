@@ -78,3 +78,35 @@ def bundle(pipeline_out):
 def api_record() -> dict:
     """A valid /predict record for the toy model (fields are the model features)."""
     return {"row_id": "r9999", "x_num": 1.5, "x_cat": "a", "x_flag": 0, "x_num_sq": 2.25}
+
+
+@pytest.fixture()
+def server_settings(tmp_path, monkeypatch):
+    """Server settings on a SQLite file, with the dev login on and one operator."""
+    from pulse_server.settings import Settings
+
+    for name in list(os.environ):
+        if name.startswith("PULSE_"):
+            monkeypatch.delenv(name)
+    return Settings(
+        _env_file=None,
+        env="development",
+        dev_login=True,
+        database_url=f"sqlite:///{(tmp_path / 'server.db').as_posix()}",
+        customers_root=tmp_path / "customers",
+        operator_emails="ops@example.com",
+        public_url="http://testserver",
+    )
+
+
+@pytest.fixture()
+def server(server_settings):
+    """A test client of the server on a migrated database."""
+    from fastapi.testclient import TestClient
+
+    from pulse_server.app import create_app
+    from pulse_server.migrate import upgrade
+
+    upgrade(server_settings.database_url)
+    with TestClient(create_app(server_settings)) as client:
+        yield client
