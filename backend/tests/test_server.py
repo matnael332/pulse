@@ -150,6 +150,22 @@ def test_a_new_company_waits_for_approval(server):
     assert server.post("/api/signup/company", json={"name": "Again"}).status_code == 409
 
 
+def test_the_currency_of_the_revenue_figures(server, server_settings):
+    login(server, OWNER)
+    assert server.put("/api/company/currency", json={"currency": "USD"}).status_code == 404
+    created = server.post("/api/signup/company", json={"name": "Acme", "currency": "EUR"}).json()
+    assert created["currency"] == "EUR"
+    assert server.put("/api/company/currency", json={"currency": "GBP"}).status_code == 422
+    changed = server.put("/api/company/currency", json={"currency": "ILS"})  # pending may set it
+    assert changed.status_code == 200 and changed.json()["currency"] == "ILS"
+    assert server.get("/api/me").json()["company"]["currency"] == "ILS"
+    with db_session(server_settings) as db:
+        actions = db.scalars(select(AuditEvent.action)).all()
+    assert actions.count("company.currency") == 1
+    login(server, "b@b.example")
+    assert server.post("/api/signup/company", json={"name": "Beta"}).json()["currency"] == "ILS"
+
+
 def test_operators_have_no_company_and_others_no_admin(server):
     login(server, OPERATOR)
     assert server.get("/api/me").json()["state"] == "operator"
