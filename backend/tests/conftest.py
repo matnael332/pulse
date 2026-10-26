@@ -94,6 +94,7 @@ def server_settings(tmp_path, monkeypatch):
         dev_login=True,
         database_url=f"sqlite:///{(tmp_path / 'server.db').as_posix()}",
         customers_root=tmp_path / "customers",
+        web_dir=tmp_path / "web",  # not built: tests that need the site build a small one
         operator_emails="ops@example.com",
         public_url="http://testserver",
     )

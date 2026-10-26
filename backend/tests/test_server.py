@@ -252,3 +252,46 @@ def test_reject_suspend_and_reactivate(server):
     assert decide(server, other["id"], "reject").status_code == 409
     assert decide(server, 999, "approve").status_code == 404
     assert decide(server, other["id"], "suspend", slug="x").status_code == 422
+
+
+# ----------------------------------------------------------------------------- the web site
+
+
+@pytest.fixture()
+def site(server_settings):
+    web = server_settings.web_dir
+    (web / "assets").mkdir(parents=True)
+    (web / "index.html").write_text('<!doctype html><div id="root"></div>', encoding="utf-8")
+    (web / "assets" / "index-abc123.js").write_text("console.log(1)", encoding="utf-8")
+    (web / "favicon.svg").write_text("<svg/>", encoding="utf-8")
+    (server_settings.web_dir.parent / "secret.txt").write_text("no", encoding="utf-8")
+    with TestClient(create_app(server_settings)) as client:
+        yield client
+
+
+def test_every_site_path_gets_the_page(site):
+    for path in ("/", "/login", "/operator/companies"):
+        response = site.get(path)
+        assert response.status_code == 200 and 'id="root"' in response.text
+        assert "script-src 'self'" in response.headers["content-security-policy"]
+        assert response.headers["cache-control"] == "no-store"
+
+
+def test_assets_are_cached_and_files_served(site):
+    asset = site.get("/assets/index-abc123.js")
+    assert asset.status_code == 200 and "immutable" in asset.headers["cache-control"]
+    assert site.get("/favicon.svg").text == "<svg/>"
+    assert site.get("/assets/missing.js").status_code == 404
+
+
+def test_the_site_never_answers_for_the_api_or_outside_its_folder(site):
+    assert site.get("/api/nothing").status_code == 404
+    assert site.get("/auth/nothing").status_code == 404
+    assert site.get("/health").json()["status"] == "ok"
+    escape = site.get("/..%2Fsecret.txt")  # web/../secret.txt: the page, never the file
+    assert escape.status_code == 200 and 'id="root"' in escape.text
+
+
+def test_without_a_build_the_site_says_so(server):
+    response = server.get("/")
+    assert response.status_code == 404 and "npm run build" in response.json()["detail"]

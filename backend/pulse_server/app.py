@@ -13,6 +13,7 @@ from pulse_server.db import make_engine
 from pulse_server.oidc import OidcClient
 from pulse_server.security import guard
 from pulse_server.settings import Settings
+from pulse_server.site import mount_site
 
 
 def create_app(
@@ -48,4 +49,5 @@ def create_app(
             return JSONResponse({"status": "degraded", "db": type(exc).__name__}, 503)
         return {"status": "ok", "db": "ok"}
 
+    mount_site(app, settings.web_dir)
     return app
