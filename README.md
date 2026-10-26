@@ -53,7 +53,7 @@ honour.
 ```bash
 uv sync                                                            # Python 3.13 + locked deps
 uv run ruff check . && uv run ruff format --check .
-uv run pytest                                                      # 182 tests: toy spec, generator, workforce_saas spec, ingestion, server
+uv run pytest                                                      # 207 tests: toy spec, generator, workforce_saas spec, ingestion, server, worker
 uv run synth --data-dir data                                       # workforce_saas raw data: 200 accounts, ~145 MB, < 1 min
 uv run python -m pulse_flow.run --no-llm --spec pulse_specs.workforce_saas.spec:SPEC --data-dir data   # full run, promotes to artifacts/
 uv run python -m pulse_flow.run --no-llm --spec tests.toy_spec:SPEC --data-dir <toy data> --no-promote
@@ -83,7 +83,8 @@ origin are refused):
 cd web && npm ci && npm run build && cd ..                         # Node 24; the site into web/dist
 PULSE_ENV=development PULSE_DEV_LOGIN=1 PULSE_OPERATOR_EMAILS=ops@example.com \
   uv run pulse-server serve --migrate                              # http://localhost:8100 (API docs: /api/docs)
-python scripts/server_smoke.py                                     # signup -> approval, end to end
+PULSE_ENV=development uv run pulse-server worker                   # uploads, ingestion, runs (another terminal)
+python scripts/server_smoke.py [--demo]                            # signup -> approval (-> the demo's run), end to end
 ```
 
 While working on the site, `npm run dev` in `web/` serves it on http://localhost:5173 with live
@@ -94,7 +95,16 @@ reload and forwards `/api`, `/auth` and `/health` to the server; start the serve
 The site is Hebrew or English (an English browser opens in English, any other in Hebrew; the
 switch is remembered), right-to-left in Hebrew, light or dark like the system, and one page per
 state: sign-in, the company's name, waiting for approval (or rejected, suspended), an active
-company's home, and the operator's companies screen.
+company's pages, and the operator's companies screen.
+
+An active company uploads its export on the site (a zip, up to 1 GB, streamed straight to its
+folder) or tries the demo (our scrambled synthetic export, in its own `demo/` folder; a real
+upload deletes it). The worker (`pulse-server worker`, one job at a time) proposes a mapping;
+the customer sees what was understood (data groups, their tables as ours, the columns left out,
+the personal ones among them) and fixes only what was flagged, then approves. The worker prepares
+the data and runs the pipeline; the site follows each stage and shows the summary, or the reason
+it stopped, worded from a stable code in Hebrew or English. The same structure next month is
+approved by itself, unless it brings category spellings the mapping does not know.
 
 A user signs in (`/auth/{google,microsoft}/login`, or `POST /api/auth/dev-login`), names their
 company (`POST /api/signup/company`) and waits; an operator (`PULSE_OPERATOR_EMAILS`, verified
