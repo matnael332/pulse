@@ -1,70 +1,9 @@
-import { DirectionProvider, MantineProvider } from "@mantine/core";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import type { Me } from "./api";
-import { App } from "./App";
-import { DICTIONARIES, detectLanguage, I18nProvider, translate } from "./i18n";
-import { SessionProvider } from "./session";
-import { theme } from "./theme";
-
-type Reply = { status?: number; body?: unknown };
-type Handler = (init: RequestInit | undefined) => Reply;
-
-/** A fake server: "METHOD /api/path" -> handler; anything else is a 404. */
-function serve(routes: Record<string, Handler | Reply>) {
-  const calls: { key: string; body: unknown }[] = [];
-  const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-    const key = `${init?.method ?? "GET"} ${url}`;
-    calls.push({ key, body: init?.body ? JSON.parse(init.body as string) : undefined });
-    const route = routes[key];
-    const reply = typeof route === "function" ? route(init) : (route ?? { status: 404 });
-    const status = reply.status ?? 200;
-    return new Response(status === 204 ? null : JSON.stringify(reply.body ?? {}), { status });
-  });
-  vi.stubGlobal("fetch", fetchMock);
-  return calls;
-}
-
-function renderAt(path: string, lang = "he") {
-  localStorage.setItem("pulse.lang", lang); // jsdom's browser is English
-  return render(
-    <DirectionProvider>
-      <MantineProvider theme={theme} env="test">
-        <I18nProvider>
-          <SessionProvider>
-            <MemoryRouter initialEntries={[path]}>
-              <App />
-            </MemoryRouter>
-          </SessionProvider>
-        </I18nProvider>
-      </MantineProvider>
-    </DirectionProvider>,
-  );
-}
-
-const he = (key: keyof typeof DICTIONARIES.he, values?: Record<string, string>) =>
-  translate("he", key, values);
-
-function me(state: Me["state"], company: Partial<NonNullable<Me["company"]>> | null = null): Me {
-  return {
-    user: { email: "dana@acme.example", name: "Dana", provider: "google", email_verified: true },
-    is_operator: state === "operator",
-    company: company && {
-      id: 1,
-      name: "Acme",
-      slug: null,
-      status: "pending",
-      created_at: "2026-10-26T10:00:00Z",
-      decided_at: null,
-      note: null,
-      ...company,
-    },
-    state,
-  };
-}
+import { detectLanguage, translate } from "./i18n";
+import { he, me, renderAt, serve } from "./test-utils";
 
 describe("language", () => {
   it("follows the browser: English for English, Hebrew otherwise, the saved choice first", () => {
@@ -134,18 +73,26 @@ describe("the gate", () => {
     expect(screen.getByText(he("status.reason", { note: "not a fit" }))).toBeInTheDocument();
   });
 
-  it("opens an active company's home", async () => {
-    const company = {
-      ...me("active", { status: "active", slug: "acme" }).company,
-      has_model: false,
-    };
+  it("opens an active company's home with upload and the demo", async () => {
     serve({
       "GET /api/me": { body: me("active", { status: "active", slug: "acme" }) },
-      "GET /api/company": { body: company },
+      "GET /api/company": {
+        body: {
+          ...me("active", { status: "active", slug: "acme" }).company,
+          has_model: false,
+          has_real_data: false,
+          current: null,
+          latest_run: null,
+        },
+      },
     });
     renderAt("/status");
-    expect(await screen.findByText(he("home.next.title"))).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Acme" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Acme" })).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: he("home.upload") })[0]).toHaveAttribute(
+      "href",
+      "/upload",
+    );
+    expect(screen.getAllByRole("button", { name: he("home.demo") })[0]).toBeInTheDocument();
   });
 });
 
