@@ -307,6 +307,33 @@ def discard(
     return ingestion_json(db, row)
 
 
+class Demo(BaseModel):
+    language: Language = "he"
+
+
+@router.post("/demo", status_code=201)
+def try_demo(body: Demo, company: ActiveCompany, user: CurrentUser, db: Db, settings: Config):
+    """The whole path on our synthetic export, in the demo's own folder; replaces any earlier
+    demo. Only before the company has real data."""
+    if has_real_data(db, company):
+        raise http_error(409, "demo_unavailable")
+    if _in_flight(db, company):
+        raise http_error(409, "ingestion_in_flight")
+    remove_demo(db, settings, company)
+    row = Ingestion(
+        id=session.new_ingestion_id(),
+        company_id=company.id,
+        demo=True,
+        filename="demo.zip",
+        language=body.language,
+    )
+    db.add(row)
+    jobs.enqueue(db, "propose", company.id, ingestion_id=row.id)
+    audit(db, user.email, "ingestion.demo", company.id, ingestion=row.id)
+    db.commit()
+    return ingestion_json(db, row)
+
+
 # ------------------------------------------------------------------------------------ runs
 
 
