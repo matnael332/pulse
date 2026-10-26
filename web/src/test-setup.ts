@@ -3,7 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
 
-// jsdom has neither; Mantine needs both.
+// jsdom lacks these; Mantine needs them.
 Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: vi.fn().mockImplementation((query: string) => ({
@@ -17,6 +17,7 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: vi.fn(),
   })),
 });
+Element.prototype.scrollIntoView = vi.fn(); // the dropdowns scroll their selected option
 window.ResizeObserver = class {
   observe() {}
   unobserve() {}
