@@ -199,6 +199,27 @@ def propose_values(
                 )
 
 
+def unrecognised_values(
+    mapping: Mapping, contract: IngestContract, values: dict[str, dict[str, list[str]]]
+) -> dict[str, list[str]]:
+    """Enum spellings in the sources that the mapping's value maps do not translate.
+
+    ``values`` is the staged ``values.json`` (source table -> column -> distinct values); the
+    result is keyed like ``value_maps``: ``"table.column" -> [spellings]``."""
+    found = {}
+    for name, table in mapping.tables.items():
+        for column in contract.table(name).columns:
+            source = table.columns.get(column.name)
+            if not column.values or not source or not source.column:
+                continue
+            known = mapping.value_maps.get(f"{name}.{column.name}", {})
+            seen = {v for m in table.sources for v in values.get(m, {}).get(source.column, [])}
+            unknown = sorted(v for v in seen if v not in known and v.lower() not in column.values)
+            if unknown:
+                found[f"{name}.{column.name}"] = unknown
+    return found
+
+
 def source_values(tables: dict[str, pd.DataFrame], source: str, column: str) -> list[str]:
     """Distinct values of a column of a source table (``tables`` holds the union groups)."""
     df = tables.get(source)
