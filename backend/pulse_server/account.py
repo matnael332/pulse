@@ -9,11 +9,11 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from pulse_ingest.layout import CustomerDir
 from pulse_server.deps import ActiveCompany, Config, CurrentUser, Db, is_operator
 from pulse_server.models import Company, User
 from pulse_server.security import audit
 from pulse_server.settings import Settings
+from pulse_server.uploads import overview
 
 router = APIRouter(prefix="/api", tags=["account"])
 
@@ -72,7 +72,7 @@ def signup_company(body: Signup, user: CurrentUser, db: Db, settings: Config) ->
 
 
 @router.get("/company")
-def my_company(company: ActiveCompany, settings: Config) -> dict:
-    folder = CustomerDir(settings.customers_root / company.slug)
-    has_model = (folder.artifacts / "model.joblib").exists()
-    return {**company_json(company), "has_model": has_model}
+def my_company(company: ActiveCompany, db: Db) -> dict:
+    """The company, what is under way, and its latest result."""
+    under_way = overview(db, company)
+    return {**company_json(company), **under_way, "has_model": bool(under_way["latest_run"])}

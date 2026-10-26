@@ -192,8 +192,15 @@ def edit(
             for col in staged.source(s).columns
             if col.name == fix["source"]
         )
-        table.columns[fix["column"]] = ColumnSource(
-            column=fix["source"], format=profile.format, origin="user", confidence=CERTAIN
+        before = table.columns.get(fix["column"])
+        kept = before if before and before.column == fix["source"] else ColumnSource()
+        table.columns[fix["column"]] = ColumnSource(  # confirming a date keeps its time column
+            column=fix["source"],
+            format=profile.format,
+            time_column=kept.time_column,
+            time_format=kept.time_format,
+            origin="user",
+            confidence=CERTAIN,
         )
         if target.values:  # an enum: recognise the new source's spellings
             _revalue(mapping, contract, staged.values, fix["table"], target, stored)

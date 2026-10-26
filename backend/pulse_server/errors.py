@@ -34,5 +34,5 @@ def refusal(exc: BaseException) -> tuple[str, dict]:
     return "internal", {}
 
 
-def http_error(status: int, code: str, **params) -> HTTPException:
-    return HTTPException(status, {"code": code, "params": params})
+def http_error(http_status: int, code: str, /, **params) -> HTTPException:
+    return HTTPException(http_status, {"code": code, "params": params})
