@@ -1,7 +1,7 @@
 # pulse on our server: the dashboard and the API stay up, `job` runs the pipeline on demand.
 #
 #   docker compose build
-#   docker compose run --rm job synth --data-dir /srv/pulse/customers/demo/data
+#   docker compose run --rm job synth --data-dir /srv/pulse/customers/demo/data/synth
 #   docker compose run --rm job python -m pulse_flow.run --no-llm ...   (see DEPLOY.md)
 #   docker compose up -d
 #

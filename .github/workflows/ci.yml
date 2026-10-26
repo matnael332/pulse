@@ -58,12 +58,12 @@ jobs:
       - name: Build the image
         run: docker compose build
       - name: Synthetic data for the demo customer
-        run: docker compose run --rm job synth --data-dir "$CUSTOMER/data"
+        run: docker compose run --rm job synth --data-dir "$CUSTOMER/data/synth"
       - name: Full pipeline run inside the image (deterministic, promotes)
         run: >-
           docker compose run --rm job python -m pulse_flow.run --no-llm
           --spec pulse_specs.workforce_saas.spec:SPEC
-          --data-dir "$CUSTOMER/data" --runs-dir "$CUSTOMER/runs" --artifacts-dir "$CUSTOMER/artifacts"
+          --data-dir "$CUSTOMER/data/synth" --runs-dir "$CUSTOMER/runs" --artifacts-dir "$CUSTOMER/artifacts"
       - name: Dashboard and API start healthy on the promoted model
         run: |
           docker compose up -d --wait --wait-timeout 120 dashboard api

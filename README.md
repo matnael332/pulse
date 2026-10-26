@@ -77,9 +77,9 @@ The same inside Docker, on the server volume (`DEPLOY.md` has the full guide; CI
 
 ```bash
 docker compose build
-docker compose run --rm job synth --data-dir /srv/pulse/customers/demo/data
+docker compose run --rm job synth --data-dir /srv/pulse/customers/demo/data/synth
 docker compose run --rm job python -m pulse_flow.run --no-llm --spec pulse_specs.workforce_saas.spec:SPEC \
-  --data-dir /srv/pulse/customers/demo/data --runs-dir /srv/pulse/customers/demo/runs \
+  --data-dir /srv/pulse/customers/demo/data/synth --runs-dir /srv/pulse/customers/demo/runs \
   --artifacts-dir /srv/pulse/customers/demo/artifacts
 docker compose up -d                                               # dashboard :8501, API :8000 (localhost only)
 ```
