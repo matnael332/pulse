@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./var/pulse-server.db"
     customers_root: Path = Path("customers")
     web_dir: Path = Path("web/dist")  # the built web site
+    work_dir: Path = Path("var")  # the worker's logs and the demo export
+    max_upload_mb: int = 1024
+    worker_poll_seconds: float = 2.0
+    step_timeout_minutes: float = 20  # reading or applying an export
+    run_timeout_minutes: float = 40  # a pipeline run
     public_url: str = "http://localhost:8100"
     secret_key: str = ""
     operator_emails: str = ""  # comma-separated
