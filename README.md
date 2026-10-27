@@ -98,9 +98,14 @@ after the SpaceX DESIGN.md of awesome-design-md, with Barlow Condensed and Noto 
 from the site itself. A visitor sees the landing page (`/`, and `/login` where a failed sign-in
 comes back): customers in orbit behind the first screen, how it works as the product's progress
 bar, a sample customer's reasons, what happens to the data, and Google or Microsoft to sign in;
-everything that moves can be paused, and stands still for reduced motion. A signed-in user has one
-page per state: the company's name, waiting for approval (or rejected, suspended), an active
-company's pages, and the operator's companies screen.
+everything that moves can be paused, and stands still for reduced motion. A company has two pages.
+The data page (`/data`) is its whole journey on one rail, the landing page's progress bar: the
+company's name and currency, the wait for approval, the upload (drop the zip on the planet, or try
+the demo), the reading, the review, the preparing and the model's run (`/data/ingestions/:id`,
+`/data/runs/:id`), beside the latest result drawn as a sky of its accounts, the ones at high risk in
+red; connecting systems directly is listed, coming in version 2. A finished run opens the dashboard
+(`/dashboard/:id`). `/` sends a company to where it stands; the old addresses move to the new ones.
+The operator has the companies screen.
 
 An active company uploads its export on the site (a zip, up to 1 GB, streamed straight to its
 folder) or tries the demo (our scrambled synthetic export, in its own `demo/` folder; a real
