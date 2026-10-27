@@ -2,8 +2,9 @@
 
 ## Language and output
 
-- When the user writes in Hebrew, answer in Hebrew (right to left), with as little English as
-  possible: English only for code, identifiers, file paths and commands.
+- Always answer the user in Hebrew (right to left), whatever language the request or the material
+  is in, with as little English as possible: English only for code, identifiers, file paths and
+  commands.
 - User-facing text meant for Hebrew readers (UI copy, reports, plans) is Hebrew, right to left.
 - Write reports and plans in plain Markdown: no box-drawing tables or terminal-width layouts.
 
