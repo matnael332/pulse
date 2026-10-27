@@ -17,6 +17,7 @@ export function riskCsv(accounts: ScoredAccount[], lang: Lang, headers: string[]
     a.name,
     label.risk(a.level, lang),
     (a.probability * 100).toFixed(1),
+    a.mrr ?? "",
     a.reasons.map((r) => label.reason(r.code, lang)).join("; "),
   ]);
   const lines = [headers, ...rows].map((row) => row.map(cell).join(","));

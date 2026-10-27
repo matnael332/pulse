@@ -1,0 +1,550 @@
+/* The dashboard, "mission control" like the data page: the company's accounts as a sky, the money
+   at stake as the biggest figure, then who, why and the trend. App-screen rules: titles up to 32px,
+   figures up to 40px, colour on data only (red is risk).
+   The grid: three columns and one 24px gutter. In the 1288px canvas 3 x 413.33 + 2 x 24 = 1288;
+   two thirds are 850.67 = 2 x 413.33 + 24. */
+.page {
+  padding-top: 24px;
+  padding-bottom: 64px;
+}
+
+.display {
+  font-family: var(--pulse-font-display);
+  font-weight: 600;
+  font-stretch: 72%;
+  line-height: 1;
+  margin: 0;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 32px;
+  margin-bottom: 20px;
+}
+
+.title {
+  font-size: 32px;
+}
+
+.lead {
+  margin: 10px 0 0;
+  color: var(--pulse-muted);
+}
+
+.stamp {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--pulse-soft);
+  white-space: nowrap;
+}
+
+.tag {
+  border: 1px solid var(--pulse-outline);
+  border-radius: 999px;
+  padding: 2px 12px;
+  color: var(--pulse-ink);
+  font-size: 14px;
+}
+
+/* the two views: underline tabs on one full-width rule */
+.tabs {
+  display: flex;
+  gap: 28px;
+  border-bottom: 1px solid var(--pulse-line);
+  margin-bottom: 24px;
+}
+
+.tab {
+  padding: 10px 0;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  color: var(--pulse-soft);
+  text-decoration: none;
+  transition: color 180ms ease;
+}
+
+.tab:hover {
+  color: var(--pulse-ink);
+}
+
+.tab[aria-current="page"] {
+  color: var(--pulse-ink);
+  font-weight: 600;
+  border-bottom-color: var(--pulse-ink);
+}
+
+/* ---------------------------------------------------------------------------- the grid */
+.stack {
+  display: grid;
+  gap: 24px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+/* two panels in one container, split by a hairline: one height, whatever each holds */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  background: var(--pulse-surface);
+  border-radius: 6px;
+}
+
+.split > section {
+  background: none;
+  border-radius: 0;
+}
+
+.split > section + section {
+  border-inline-start: 1px solid var(--pulse-line);
+}
+
+.wideFirst {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+
+.panel {
+  position: relative;
+  overflow: hidden;
+  background: var(--pulse-surface);
+  border-radius: 6px;
+  padding: 24px;
+}
+
+.flush {
+  padding: 0;
+}
+
+.panelHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.flush .panelHead {
+  padding: 24px 24px 0;
+}
+
+.panelTitle {
+  font-size: 24px;
+}
+
+.note {
+  margin: 0;
+  color: var(--pulse-soft);
+  font-size: 14px;
+}
+
+/* ---------------------------------------------------------------------------- the figures */
+.answer {
+  margin: 0;
+}
+
+.answer dt,
+.strip dt {
+  color: var(--pulse-muted);
+  font-size: 14px;
+}
+
+.answer dd,
+.strip dd {
+  margin: 0;
+}
+
+.answer .value {
+  font-size: 40px;
+  line-height: 1.1;
+  color: var(--pulse-red);
+}
+
+.of {
+  color: var(--pulse-soft);
+  font-size: 14px;
+}
+
+.strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+}
+
+.strip > div {
+  padding: 18px 24px;
+  border-inline-start: 1px solid var(--pulse-line);
+}
+
+.strip > div:first-child {
+  border-inline-start: 0;
+}
+
+.value {
+  font-family: var(--pulse-font-display);
+  font-weight: 600;
+  font-size: 28px;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.high .value {
+  color: var(--pulse-red);
+}
+
+.change {
+  color: var(--pulse-soft);
+  font-size: 14px;
+}
+
+.bad {
+  color: var(--pulse-red);
+}
+
+/* the first screen: the sky across the top, the revenue at risk over it, the counts under it */
+.hero {
+  padding: 0;
+}
+
+.heroSky {
+  position: relative;
+  min-height: 280px;
+  padding: 28px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.hero .strip {
+  border-top: 1px solid var(--pulse-line);
+}
+
+.sky {
+  position: absolute;
+  inset: 0;
+}
+
+.over {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------------------------------------------------------------------------- the table */
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px 16px;
+}
+
+.table th {
+  color: var(--pulse-soft);
+  font-weight: 400;
+  font-size: 13px;
+}
+
+.table td,
+.table th {
+  padding-block: 12px;
+}
+
+.table td:first-child,
+.table th:first-child {
+  padding-inline-start: 24px;
+}
+
+.table td:last-child,
+.table th:last-child {
+  padding-inline-end: 24px;
+}
+
+.num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.muted {
+  color: var(--pulse-soft);
+}
+
+.sub {
+  display: block;
+  color: var(--pulse-soft);
+  font-size: 13px;
+}
+
+.level {
+  display: inline-block;
+  white-space: nowrap;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 13px;
+}
+
+.level[data-level="high"] {
+  background: var(--pulse-red-tint);
+  color: var(--pulse-red);
+  font-weight: 600;
+}
+
+.level[data-level="elevated"] {
+  color: var(--pulse-ink);
+  font-weight: 700;
+  padding-inline: 0;
+}
+
+.level[data-level="normal"] {
+  color: var(--pulse-soft);
+  padding-inline: 0;
+}
+
+.empty {
+  padding: 32px 24px;
+  text-align: center;
+  color: var(--pulse-soft);
+}
+
+.pages {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+}
+
+/* ---------------------------------------------------------------------------- the reasons */
+.bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.bars li > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--pulse-soft);
+}
+
+.bars li:first-child .track {
+  background: var(--pulse-ink);
+}
+
+/* ---------------------------------------------------------------------------- the charts */
+.legend {
+  display: flex;
+  gap: 16px;
+  color: var(--pulse-soft);
+  font-size: 13px;
+}
+
+.legend span::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-inline-end: 6px;
+  background: var(--pulse-soft);
+}
+
+.legend .legendHigh::before {
+  background: var(--pulse-red);
+}
+
+/* ---------------------------------------------------------------------------- the words */
+/* the findings across the canvas in two columns, so no line runs the full width */
+.columns {
+  column-count: 2;
+  column-gap: 48px;
+}
+
+.columns .headline {
+  column-span: all;
+}
+
+.columns li,
+.subhead {
+  break-inside: avoid;
+}
+
+.subhead {
+  break-after: avoid;
+}
+
+.headline {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0 0 12px;
+}
+
+.list {
+  margin: 0 0 16px;
+  padding-inline-start: 20px;
+  display: grid;
+  gap: 8px;
+}
+
+.notes p {
+  margin: 0 0 8px;
+}
+
+/* ---------------------------------------------------------------------------- the phone */
+@media (max-width: 900px) {
+  .row,
+  .split {
+    grid-template-columns: 1fr;
+  }
+  .split > section + section {
+    border-inline-start: 0;
+    border-top: 1px solid var(--pulse-line);
+  }
+  .columns {
+    column-count: 1;
+  }
+  .head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .title {
+    font-size: 26px;
+  }
+  .strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .strip > div:nth-child(odd) {
+    border-inline-start: 0;
+  }
+  .strip > div:nth-child(n + 3) {
+    border-top: 1px solid var(--pulse-line);
+  }
+  /* the sky as a band above the figure */
+  .heroSky {
+    min-height: 0;
+    padding-top: 220px;
+  }
+  .heroSky .sky {
+    bottom: auto;
+    height: 220px;
+  }
+}
+
+/* ---------------------------------------------------------------------------- small parts */
+.answerBox {
+  margin: 0;
+}
+
+.reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.reason {
+  flex: none;
+  white-space: nowrap;
+  border: 1px solid var(--pulse-outline);
+  border-radius: 4px;
+  padding: 1px 8px;
+  font-size: 13px;
+  color: var(--pulse-muted);
+}
+
+.subhead {
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+/* ---------------------------------------------------------------------------- the model */
+.five {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border-top: 1px solid var(--pulse-line);
+}
+
+.code {
+  margin-inline-end: 10px;
+}
+
+.history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.history li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--pulse-line);
+}
+
+.history .tag {
+  margin-inline-end: 8px;
+}
+
+.link {
+  color: var(--pulse-ink);
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.link[aria-current="page"] {
+  font-weight: 600;
+}
+
+.report {
+  max-width: 860px;
+  margin-top: 16px;
+}
+
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.gallery figure {
+  margin: 0;
+}
+
+.gallery img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.gallery figcaption {
+  margin-top: 8px;
+  color: var(--pulse-soft);
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .five {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .gallery {
+    grid-template-columns: 1fr;
+  }
+}

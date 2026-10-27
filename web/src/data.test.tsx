@@ -107,7 +107,10 @@ describe("the data page", () => {
     });
     renderAt("/data/runs/run1");
     expect(
-      await screen.findByRole("heading", { level: 1, name: he("nav.dashboard") }),
+      await screen.findByRole("heading", {
+        level: 1,
+        name: he("dashboard.title", { name: ACTIVE.company!.name }),
+      }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: he("nav.dashboard") })).toHaveAttribute(
       "aria-current",
