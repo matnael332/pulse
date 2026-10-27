@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,6 +8,13 @@ import { problemText } from "./problems";
 import { en, he, me, renderAt, serve } from "./test-utils";
 
 const ACTIVE = me("active", { status: "active", slug: "acme" });
+const COMPANY = {
+  ...ACTIVE.company,
+  has_model: false,
+  has_real_data: false,
+  current: null,
+  latest_run: null,
+};
 
 function ingestion(status: Ingestion["status"], extra: Partial<Ingestion> = {}): Ingestion {
   return {
@@ -110,7 +117,7 @@ describe("the review", () => {
         body: run("running", { stage: "run_analyst_stage", stages_done: 1 }),
       },
     });
-    renderAt("/ingestions/ing1");
+    renderAt("/data/ingestions/ing1");
     expect(await screen.findByText(he("review.title"))).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: new RegExp(he("review.ignored")) }));
     expect(await screen.findByText("שם עובד, ת.ז.", { exact: false })).toBeInTheDocument();
@@ -142,7 +149,7 @@ describe("the review", () => {
         body: { ...REVIEW, blocking: [{ table: "punches", column: "punched_at" }] },
       },
     });
-    renderAt("/ingestions/ing1");
+    renderAt("/data/ingestions/ing1");
     expect(
       await screen.findByText(he("review.blocking", { columns: "החתמות · זמן ההחתמה" })),
     ).toBeInTheDocument();
@@ -157,7 +164,7 @@ describe("progress and failures", () => {
       "GET /api/me": { body: ACTIVE },
       "GET /api/ingestions/ing1": { body: ingestion("failed", { error }) },
     });
-    renderAt("/ingestions/ing1");
+    renderAt("/data/ingestions/ing1");
     expect(
       await screen.findByText(he("error.core_groups_missing", { groups: "שכר והפקות" })),
     ).toBeInTheDocument();
@@ -177,7 +184,7 @@ describe("progress and failures", () => {
       "POST /api/runs/run2/retry": { status: 201, body: run("queued", { id: "run3" }) },
       "GET /api/runs/run3": { body: run("queued", { id: "run3", queue_position: 2 }) },
     });
-    renderAt("/runs/run2");
+    renderAt("/data/runs/run2");
     expect(
       await screen.findByText(he("error.pipeline_failed", { stage: "בדיקת איכות הנתונים" })),
     ).toBeInTheDocument();
@@ -219,9 +226,10 @@ describe("upload and the demo", () => {
     vi.stubGlobal("XMLHttpRequest", FakeXhr);
     serve({
       "GET /api/me": { body: ACTIVE },
+      "GET /api/company": { body: COMPANY },
       "GET /api/ingestions/ing1": { body: ingestion("proposing", { queue_position: 1 }) },
     });
-    renderAt("/upload");
+    renderAt("/data");
     const file = new File(["PK.."], "export.zip", { type: "application/zip" });
     await userEvent.upload(await screen.findByLabelText(he("upload.choose")), file);
     await userEvent.click(screen.getByRole("button", { name: he("upload.send") }));
@@ -232,37 +240,27 @@ describe("upload and the demo", () => {
   });
 
   it("refuses anything but a zip before sending it", async () => {
-    serve({ "GET /api/me": { body: ACTIVE } });
-    renderAt("/upload");
+    serve({ "GET /api/me": { body: ACTIVE }, "GET /api/company": { body: COMPANY } });
+    renderAt("/data");
     const pdf = new File(["%PDF"], "report.pdf", { type: "application/pdf" });
     await userEvent.upload(await screen.findByLabelText(he("upload.choose")), pdf, {
       applyAccept: false,
     });
     expect(screen.getByText(he("upload.notZip"))).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: he("upload.send") })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: he("upload.send") })).not.toBeInTheDocument();
   });
 
   it("starts the demo in the page's language", async () => {
     const calls = serve({
       "GET /api/me": { body: ACTIVE },
-      "GET /api/company": {
-        body: {
-          ...ACTIVE.company,
-          has_model: false,
-          has_real_data: false,
-          current: null,
-          latest_run: null,
-        },
-      },
+      "GET /api/company": { body: COMPANY },
       "POST /api/demo": { status: 201, body: ingestion("proposing", { demo: true }) },
       "GET /api/ingestions/ing1": { body: ingestion("proposing", { demo: true }) },
     });
     renderAt("/", "en");
-    const card = (await screen.findAllByText(en("home.demoHint")))[0].closest("div")!;
-    expect(card).toBeTruthy();
-    await userEvent.click(screen.getAllByRole("button", { name: en("home.demo") })[0]);
+    expect(await screen.findByText(en("home.demoHint"))).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: en("home.demo") }));
     expect(await screen.findByText(en("ingestion.reading"))).toBeInTheDocument();
     expect(calls.find((c) => c.key === "POST /api/demo")?.body).toEqual({ language: "en" });
-    within(document.body);
   });
 });

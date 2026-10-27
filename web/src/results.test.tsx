@@ -110,7 +110,7 @@ function routes() {
 describe("the business tab", () => {
   it("lists the accounts at risk with their names and reasons", async () => {
     serve(routes());
-    renderAt("/runs/run1");
+    renderAt("/dashboard/run1");
     expect(await screen.findByText("מאפיית הגליל", {}, LAZY)).toBeInTheDocument();
     expect(screen.getByText("הפסיקו להפיק שכר")).toBeInTheDocument();
     expect(screen.getByText(he("results.template"))).toBeInTheDocument();
@@ -144,7 +144,7 @@ describe("the business tab", () => {
       revokeObjectURL: () => {},
     });
     serve(routes());
-    renderAt("/runs/run1", "en");
+    renderAt("/dashboard/run1", "en");
     await userEvent.click(
       await screen.findByRole("button", { name: en("results.download") }, LAZY),
     );
@@ -171,7 +171,7 @@ describe("the advanced tab", () => {
         return new Response(body, { status: 200 });
       }),
     );
-    renderAt("/runs/run1");
+    renderAt("/dashboard/run1");
     await userEvent.click(await screen.findByRole("tab", { name: he("results.advanced") }, LAZY));
     expect((await screen.findAllByText("0.812")).length).toBe(2); // the card and the table
     const report = await screen.findByTestId("report");

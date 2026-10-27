@@ -63,7 +63,10 @@ describe("the gate", () => {
     await userEvent.type(await screen.findByLabelText(he("welcome.name")), "Acme");
     await userEvent.click(screen.getByRole("button", { name: he("welcome.submit") }));
     expect(await screen.findByText(he("status.pending.title"))).toBeInTheDocument();
-    expect(calls.find((c) => c.key === "POST /api/signup/company")?.body).toEqual({ name: "Acme" });
+    expect(calls.find((c) => c.key === "POST /api/signup/company")?.body).toEqual({
+      name: "Acme",
+      currency: "ILS",
+    });
   });
 
   it("shows a rejected company the operator's note", async () => {
@@ -73,7 +76,7 @@ describe("the gate", () => {
     expect(screen.getByText(he("status.reason", { note: "not a fit" }))).toBeInTheDocument();
   });
 
-  it("opens an active company's home with upload and the demo", async () => {
+  it("opens an active company's data page: the upload, the demo, the systems to come", async () => {
     serve({
       "GET /api/me": { body: me("active", { status: "active", slug: "acme" }) },
       "GET /api/company": {
@@ -86,13 +89,18 @@ describe("the gate", () => {
         },
       },
     });
-    renderAt("/status");
-    expect(await screen.findByRole("heading", { name: "Acme" })).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: he("home.upload") })[0]).toHaveAttribute(
-      "href",
-      "/upload",
-    );
-    expect(screen.getAllByRole("button", { name: he("home.demo") })[0]).toBeInTheDocument();
+    renderAt("/status"); // an old address moves to the data page
+    expect(
+      await screen.findByRole("heading", { level: 1, name: he("data.title", { name: "Acme" }) }),
+    ).toBeInTheDocument();
+    // the heading comes from /api/me; the rest waits for /api/company
+    expect(await screen.findByRole("button", { name: he("upload.choose") })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: he("home.demo") })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: he("systems.connect") })).toHaveLength(5);
+    screen
+      .getAllByRole("button", { name: he("systems.connect") })
+      .forEach((button) => expect(button).toBeDisabled());
+    expect(screen.getByText(he("data.empty"))).toBeInTheDocument();
   });
 });
 

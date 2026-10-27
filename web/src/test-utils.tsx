@@ -65,6 +65,7 @@ export function me(
       name: "Acme",
       slug: null,
       status: "pending",
+      currency: "ILS",
       created_at: "2026-10-26T10:00:00Z",
       decided_at: null,
       note: null,
