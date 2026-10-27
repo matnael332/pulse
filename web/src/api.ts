@@ -3,12 +3,15 @@ import type { Lang } from "./i18n";
 
 export type CompanyStatus = "pending" | "active" | "rejected" | "suspended";
 export type State = "operator" | "needs_company" | CompanyStatus;
+export type Currency = "ILS" | "USD" | "EUR";
+export const CURRENCIES: Currency[] = ["ILS", "USD", "EUR"];
 
 export interface Company {
   id: number;
   name: string;
   slug: string | null;
   status: CompanyStatus;
+  currency: Currency;
   created_at: string;
   decided_at: string | null;
   note: string | null;
@@ -32,6 +35,8 @@ export interface RunSummary {
   high: number;
   elevated: number;
   normal: number;
+  revenue_at_risk?: number | null; // monthly revenue of the accounts at high risk (null: unknown)
+  revenue_total?: number | null;
   snapshot_date: string | null;
 }
 
@@ -185,8 +190,10 @@ export const getProviders = () => api<{ providers: string[] }>("/auth/providers"
 export const devLogin = (email: string) =>
   api<void>("/auth/dev-login", { method: "POST", body: { email } });
 export const logout = () => api<void>("/auth/logout", { method: "POST" });
-export const signupCompany = (name: string) =>
-  api<Company>("/signup/company", { method: "POST", body: { name } });
+export const signupCompany = (name: string, currency: Currency) =>
+  api<Company>("/signup/company", { method: "POST", body: { name, currency } });
+export const setCurrency = (currency: Currency) =>
+  api<Company>("/company/currency", { method: "PUT", body: { currency } });
 export const getMyCompany = () => api<MyCompany>("/company");
 export const listCompanies = (status: CompanyStatus) =>
   api<{ companies: CompanyRow[] }>(`/admin/companies?status=${status}`);

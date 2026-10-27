@@ -1,20 +1,18 @@
-// The site: the landing page for visitors, then one page per state of the signed-in user, chosen
-// by the gate (gate.ts) from /api/me.
-import { AppShell, Button, Center, Container, Loader, Stack, Text } from "@mantine/core";
-import { Navigate, Outlet, Route, Routes, useLocation } from "react-router";
+// The site: the landing page for visitors; for a company, its data page (from its name to a run)
+// and its dashboard; for the operator, the companies screen. The gate (gate.ts) decides from
+// /api/me, and moves the old addresses to the new ones.
+import { Button, Center, Loader, Stack, Text } from "@mantine/core";
+import { Navigate, Outlet, Route, Routes, useLocation, useParams } from "react-router";
 
-import { Header } from "./components/Header";
-import { allowed, home } from "./gate";
+import { allowed, home, legacy } from "./gate";
 import { useI18n } from "./i18n";
-import { Home } from "./pages/Home";
-import { IngestionPage } from "./pages/IngestionPage";
+import { Dashboard } from "./pages/Dashboard";
+import { Data } from "./pages/Data";
 import { Landing } from "./pages/Landing";
 import { Operator } from "./pages/Operator";
-import { RunPage } from "./pages/RunPage";
-import { Status } from "./pages/Status";
-import { Upload } from "./pages/Upload";
-import { Welcome } from "./pages/Welcome";
+import { Root } from "./pages/Root";
 import { useSession } from "./session";
+import { Shell } from "./shell/Shell";
 
 function Gate() {
   const { me, loading, failed, refresh } = useSession();
@@ -39,26 +37,17 @@ function Gate() {
       </Center>
     );
   }
+  const moved = me && legacy(location.pathname);
+  if (moved) return <Navigate to={{ pathname: moved, search: location.search }} replace />;
   if (!allowed(me, location.pathname)) {
     return <Navigate to={{ pathname: home(me), search: location.search }} replace />;
   }
   return me ? <Outlet /> : <Landing />;
 }
 
-/** The signed-in pages: the header and a centred column. */
-function Shell() {
-  return (
-    <AppShell header={{ height: 64 }} padding="lg">
-      <AppShell.Header withBorder={false} bg="transparent">
-        <Header />
-      </AppShell.Header>
-      <AppShell.Main>
-        <Container size="xl">
-          <Outlet />
-        </Container>
-      </AppShell.Main>
-    </AppShell>
-  );
+function Step({ kind }: { kind: "ingestion" | "run" }) {
+  const { id = "" } = useParams();
+  return <Data view={{ kind, id }} />;
 }
 
 export function App() {
@@ -66,13 +55,13 @@ export function App() {
     <Routes>
       <Route element={<Gate />}>
         <Route element={<Shell />}>
-          <Route path="/" element={<Home />} />
-          <Route path="/welcome" element={<Welcome />} />
-          <Route path="/status" element={<Status />} />
+          <Route path="/" element={<Root />} />
+          <Route path="/data" element={<Data view={{ kind: "start" }} />} />
+          <Route path="/data/ingestions/:id" element={<Step kind="ingestion" />} />
+          <Route path="/data/runs/:id" element={<Step kind="run" />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard/:runId" element={<Dashboard />} />
           <Route path="/operator" element={<Operator />} />
-          <Route path="/upload" element={<Upload />} />
-          <Route path="/ingestions/:id" element={<IngestionPage />} />
-          <Route path="/runs/:id" element={<RunPage />} />
         </Route>
         <Route path="*" element={null} />
       </Route>

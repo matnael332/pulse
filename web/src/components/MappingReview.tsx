@@ -33,7 +33,7 @@ export function MappingReview({
   onApprove: () => Promise<void>;
   onDiscard: () => Promise<void>;
 }) {
-  const { t, lang } = useI18n();
+  const { t, lang, locale } = useI18n();
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
   const NONE = "\u0000none"; // the "no such column" / "keep as written" choice
@@ -65,7 +65,7 @@ export function MappingReview({
   return (
     <Stack gap="lg">
       <Stack gap="xs">
-        <Title order={1} fz={34}>
+        <Title order={2} fz={26}>
           {t("review.title")}
         </Title>
         <Text c="dimmed" size="lg">
@@ -183,8 +183,8 @@ export function MappingReview({
             <Table.Tr>
               <Table.Th>{t("review.table")}</Table.Th>
               <Table.Th>{t("review.source")}</Table.Th>
-              <Table.Th>{t("review.rows")}</Table.Th>
-              <Table.Th>{t("review.columns")}</Table.Th>
+              <Table.Th ta="end">{t("review.rows")}</Table.Th>
+              <Table.Th ta="end">{t("review.columns")}</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -192,8 +192,10 @@ export function MappingReview({
               <Table.Tr key={row.target}>
                 <Table.Td fw={500}>{label.table(row.target, lang)}</Table.Td>
                 <Table.Td>{row.sources.join(", ")}</Table.Td>
-                <Table.Td>{row.rows.toLocaleString()}</Table.Td>
-                <Table.Td>
+                <Table.Td ta="end" className="figures">
+                  {row.rows.toLocaleString(locale)}
+                </Table.Td>
+                <Table.Td ta="end" className="figures">
                   {row.mapped}/{row.total}
                 </Table.Td>
               </Table.Tr>

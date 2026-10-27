@@ -1,0 +1,354 @@
+/* The data page, "mission control": the landing page's stage bar as the journey, a planet to drop
+   the export into, and the latest result as a sky of the company's own accounts. App-screen rules:
+   titles up to 32px, figures up to 40px, colour on data only (red is risk). */
+.page {
+  padding-top: 24px;
+  padding-bottom: 64px;
+}
+
+.display {
+  font-family: var(--pulse-font-display);
+  font-weight: 600;
+  font-stretch: 72%;
+  line-height: 1;
+  margin: 0;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 32px;
+  margin-bottom: 28px;
+}
+
+.title {
+  font-size: 32px;
+}
+
+.lead {
+  margin: 10px 0 0;
+  color: var(--pulse-muted);
+}
+
+.clock {
+  text-align: end;
+  color: var(--pulse-soft);
+  white-space: nowrap;
+}
+
+.clock b {
+  display: block;
+  font-family: var(--pulse-font-display);
+  font-weight: 600;
+  font-size: 32px;
+  line-height: 1;
+  color: var(--pulse-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------- the journey */
+.rail {
+  list-style: none;
+  display: flex;
+  gap: 4px;
+  min-height: 76px;
+  margin: 0 0 40px;
+  padding: 0;
+}
+
+.step {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--pulse-raised);
+  color: var(--pulse-soft);
+}
+
+.stepName {
+  font-family: var(--pulse-font-display);
+  font-weight: 600;
+  font-stretch: 72%;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.stepSub {
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.done {
+  background: #e0e0e0;
+  color: var(--pulse-ground);
+}
+
+.current {
+  flex: 1.7;
+  background: var(--pulse-ink);
+  color: var(--pulse-ground);
+}
+
+.failed {
+  flex: 1.7;
+  background: var(--pulse-red);
+  color: var(--pulse-ground);
+}
+
+/* the step at work: a short dark bar runs along its foot */
+@media (prefers-reduced-motion: no-preference) {
+  .working::after {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0;
+    bottom: 0;
+    width: 38%;
+    height: 4px;
+    background: var(--pulse-ground);
+    animation: work 2.4s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes work {
+  to {
+    transform: translateX(160%);
+  }
+}
+
+:global([dir="rtl"]) .working::after {
+  animation-name: workRtl;
+}
+
+@keyframes workRtl {
+  to {
+    transform: translateX(-160%);
+  }
+}
+
+/* ---------------------------------------------------------------------------- panels */
+.deck {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  align-items: start; /* a short panel keeps its own height (no blank band) */
+  gap: 24px;
+}
+
+/* the start: the upload and the result side by side, one height (the result spreads its own) */
+.even {
+  align-items: stretch;
+}
+
+.panel {
+  position: relative;
+  overflow: hidden;
+  background: var(--pulse-surface);
+  border-radius: 6px;
+  padding: 28px;
+}
+
+.panelTitle {
+  font-size: 26px;
+  margin-bottom: 8px;
+}
+
+.panelLead {
+  margin: 0 0 20px;
+  color: var(--pulse-muted);
+}
+
+/* a step: the words on the start side, the sky on the far side (StepPanel) */
+.stepPanel {
+  min-height: 380px;
+}
+
+.stepContent {
+  position: relative;
+  z-index: 1;
+  max-width: 520px;
+}
+
+/* ---------------------------------------------------------------------------- the upload */
+.launch {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 32px;
+  align-items: center;
+}
+
+/* the drop target is a planet: the file goes into orbit */
+.planet {
+  position: relative;
+  width: 300px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--pulse-raised);
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 40px;
+  transition: background-color 180ms ease;
+}
+
+.planet::before {
+  content: "";
+  position: absolute;
+  inset: -16px -40px;
+  border: 1px solid #2a2a2a; /* taste-skill-ignore: the planet's orbit ring, part of the motif */
+  border-radius: 50%;
+  transform: rotate(-18deg);
+  pointer-events: none;
+}
+
+.planet[data-over] {
+  background: #262626;
+}
+
+.planetTitle {
+  font-size: 30px;
+  margin-bottom: 8px;
+}
+
+.planetText {
+  color: var(--pulse-muted);
+  overflow-wrap: anywhere;
+}
+
+.field {
+  margin-bottom: 20px;
+}
+
+.fieldLabel {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.hint {
+  margin: 8px 0 0;
+  color: var(--pulse-soft);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ---------------------------------------------------------------------------- the latest result */
+.result {
+  min-height: 440px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.sky {
+  position: absolute;
+  inset: 0;
+}
+
+.over {
+  position: relative;
+  z-index: 1;
+}
+
+.figures {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 40px;
+  align-items: flex-end;
+}
+
+.figure span {
+  display: block;
+  color: var(--pulse-muted);
+  font-size: 14px;
+}
+
+.figure b {
+  font-family: var(--pulse-font-display);
+  font-weight: 600;
+  font-size: 40px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.risk b {
+  color: var(--pulse-red);
+}
+
+/* ---------------------------------------------------------------------------- systems */
+.systems {
+  margin-top: 24px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table td {
+  padding: 16px 0;
+  padding-inline-end: 20px;
+  border-top: 1px solid var(--pulse-line);
+  vertical-align: middle;
+}
+
+.table td:last-child {
+  padding-inline-end: 0;
+  text-align: end;
+  white-space: nowrap;
+}
+
+.systemName {
+  white-space: nowrap;
+  font-family: var(--pulse-font-display);
+  font-weight: 600;
+  font-stretch: 72%;
+  font-size: 22px;
+}
+
+.muted {
+  color: var(--pulse-soft);
+}
+
+.soon {
+  display: inline-block;
+  margin-inline-end: 16px;
+  color: var(--pulse-soft);
+}
+
+/* ---------------------------------------------------------------------------- the phone */
+@media (max-width: 900px) {
+  .deck,
+  .launch {
+    grid-template-columns: 1fr;
+  }
+  .planet {
+    width: min(300px, 100%);
+    margin-inline: auto;
+  }
+  .rail {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .title {
+    font-size: 26px;
+  }
+  .clock {
+    text-align: start;
+  }
+}
