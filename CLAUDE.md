@@ -6,6 +6,9 @@
   is in, with as little English as possible: English only for code, identifiers, file paths and
   commands.
 - User-facing text meant for Hebrew readers (UI copy, reports, plans) is Hebrew, right to left.
+- Commit messages and pull request descriptions are in Hebrew too (the conventional prefix such as
+  `feat(web):` and the attribution lines stay as they are). So are the short descriptions of the
+  commands you run, since the user sees them.
 - Write reports and plans in plain Markdown: no box-drawing tables or terminal-width layouts.
 
 ## Working within the request
