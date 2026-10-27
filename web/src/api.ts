@@ -229,6 +229,7 @@ export interface ScoredAccount {
   level: "high" | "elevated" | "normal";
   probability: number;
   rank: number;
+  mrr?: number | null; // monthly revenue in whole units (null: unknown)
   reasons: Reason[];
 }
 
@@ -241,6 +242,7 @@ export interface Results {
     finished_at: string | null;
   };
   summary: RunSummary | null;
+  currency?: Currency;
   accounts: ScoredAccount[];
   distribution: {
     levels: Record<string, number>;
