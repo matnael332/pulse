@@ -1,6 +1,7 @@
-// The landing page's sky: draws sky.ts on a canvas behind the first screen. About 30 frames a
+// The sky (sky.ts) on a canvas: behind the landing page's first screen, and as a result's picture
+// on the data page (one point per scored account, the ones at high risk in red). About 30 frames a
 // second, paused while the tab is hidden or the canvas is off screen; one still frame when the
-// visitor asks for reduced motion. Decorative only: hidden from screen readers and from the mouse.
+// visitor asks for reduced motion. Hidden from screen readers: the numbers beside it say the same.
 import { useEffect, useRef } from "react";
 
 import classes from "./Landing.module.css";
@@ -29,6 +30,18 @@ export function geometry(width: number, height: number, rtl: boolean): Geometry 
     radius: Math.min(width, height) * 0.78,
   };
 }
+
+/** A result's sky inside a panel: the planet left of centre in Hebrew, right of it in English. */
+export function panelGeometry(width: number, height: number, rtl: boolean): Geometry {
+  return {
+    cx: width * (rtl ? 0.32 : 0.68),
+    cy: height * 0.42,
+    radius: Math.min(width, height) * 0.5,
+  };
+}
+
+type Layout = (width: number, height: number, rtl: boolean) => Geometry;
+const MOST = 400; // points drawn at most, however many accounts were scored
 
 export function satellitesFor(width: number, height: number): number {
   return Math.min(90, Math.max(24, Math.round((width * height) / 14000)));
@@ -72,10 +85,14 @@ export function Orbit({
   className,
   rtl,
   paused = false,
+  layout = geometry,
+  result,
 }: {
   className?: string;
   rtl: boolean;
   paused?: boolean;
+  layout?: Layout;
+  result?: { accounts: number; risk: number }; // a result's sky: these points, nobody leaves
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const planet = useRef<HTMLDivElement>(null);
@@ -85,14 +102,21 @@ export function Orbit({
     const canvas = ref.current;
     if (canvas) {
       const box = canvas.getBoundingClientRect();
-      placePlanet(planet.current, geometry(box.width, box.height, rtl));
+      placePlanet(planet.current, layout(box.width, box.height, rtl));
     }
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return; // no canvas (tests): only the planet
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
     let width = 0;
     let height = 0;
-    let orbit: Orbit = sky.current ?? createOrbit(24);
+    const fresh = (count: number) =>
+      result
+        ? createOrbit(Math.min(result.accounts, MOST), 7, { risk: result.risk, leaving: false })
+        : reduced.matches
+          ? still(count)
+          : createOrbit(count);
+    const wanted = () => (result ? Math.min(result.accounts, MOST) : satellitesFor(width, height));
+    let orbit: Orbit = sky.current ?? fresh(24);
     let frame = 0;
     let last = 0;
     let visible = true;
@@ -105,13 +129,13 @@ export function Orbit({
       canvas!.width = Math.round(width * ratio);
       canvas!.height = Math.round(height * ratio);
       ctx!.setTransform(ratio, 0, 0, ratio, 0, 0);
-      placePlanet(planet.current, geometry(width, height, rtl));
-      const count = satellitesFor(width, height);
+      placePlanet(planet.current, layout(width, height, rtl));
+      const count = wanted();
       if (orbit.satellites.length !== count) {
-        orbit = reduced.matches ? still(count) : createOrbit(count);
+        orbit = fresh(count);
         sky.current = orbit;
       }
-      draw(ctx!, orbit, geometry(width, height, rtl), width, height);
+      draw(ctx!, orbit, layout(width, height, rtl), width, height);
     }
 
     function tick(now: number) {
@@ -119,15 +143,15 @@ export function Orbit({
       if (now - last < FRAME_MS) return;
       step(orbit, (now - last) / 1000);
       last = now;
-      draw(ctx!, orbit, geometry(width, height, rtl), width, height);
+      draw(ctx!, orbit, layout(width, height, rtl), width, height);
     }
 
     function run() {
       cancelAnimationFrame(frame);
       frame = 0;
       if (reduced.matches) {
-        orbit = still(satellitesFor(width, height));
-        draw(ctx!, orbit, geometry(width, height, rtl), width, height);
+        if (!result) orbit = still(satellitesFor(width, height));
+        draw(ctx!, orbit, layout(width, height, rtl), width, height);
       } else if (visible && !document.hidden && !paused) {
         last = performance.now();
         frame = requestAnimationFrame(tick);
@@ -153,7 +177,7 @@ export function Orbit({
       document.removeEventListener("visibilitychange", run);
       reduced.removeEventListener("change", run);
     };
-  }, [rtl, paused]);
+  }, [rtl, paused]); // a result's numbers and the layout are fixed for one mount (keyed by run)
 
   return (
     <div className={className} aria-hidden="true">

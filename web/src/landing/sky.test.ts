@@ -51,4 +51,13 @@ describe("customers in orbit", () => {
     expect(satellitesFor(390, 844)).toBe(24);
     expect(satellitesFor(2560, 1440)).toBe(90);
   });
+
+  it("draws a result as it is: one point per account, the ones at risk red, nobody leaves", () => {
+    const orbit = createOrbit(39, 7, { risk: 2, leaving: false });
+    const first = [...orbit.satellites];
+    for (let t = 0; t < 30; t += 1 / 30) step(orbit, 1 / 30);
+    expect(orbit.satellites).toEqual(first); // the same satellites, none replaced
+    expect(orbit.satellites.every((s) => !s.drifting)).toBe(true);
+    expect(orbit.satellites.filter((s) => place(s, G).red === 1)).toHaveLength(2);
+  });
 });

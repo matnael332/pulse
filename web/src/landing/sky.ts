@@ -1,6 +1,8 @@
-// The sky of the landing page, customers in orbit: points of light circle a centre on tilted ellipses. Every few seconds one
-// drifts off its orbit, turns red and leaves; a new one fades in, so the count stays the same.
-// Pure: the canvas (Orbit.tsx) only draws what this computes, and the tests drive it with a seed.
+// The sky: customers in orbit. Points of light circle a centre on tilted ellipses. On the landing
+// page, every few seconds one drifts off its orbit, turns red and leaves, and a new one fades in, so
+// the count stays the same. A result's sky is different: one point per scored account, the ones at
+// high risk red on the outer ring, and nobody leaves. Pure: the canvas (Orbit.tsx) only draws what
+// this computes, and the tests drive it with a seed.
 
 export const RINGS = 4;
 const RED_AFTER = 1.6; // seconds of drift to turn fully red
@@ -16,12 +18,19 @@ export interface Satellite {
   t: number; // seconds since it started to drift
   out: number; // how far it has drifted, in ring widths
   alpha: number;
+  risk: boolean; // an account at high risk: red, on the outer ring
 }
 
 export interface Orbit {
   satellites: Satellite[];
   nextDrift: number; // seconds until the next one leaves
   random: () => number;
+  leaving: boolean; // whether satellites drift off (the landing) or keep their orbits (a result)
+}
+
+export interface SkyOptions {
+  risk?: number; // satellites at high risk
+  leaving?: boolean;
 }
 
 export interface Geometry {
@@ -50,8 +59,8 @@ export function seeded(seed: number): () => number {
   };
 }
 
-function satellite(random: () => number, visible: boolean): Satellite {
-  const ring = Math.floor(random() * RINGS);
+function satellite(random: () => number, visible: boolean, risk = false): Satellite {
+  const ring = risk ? RINGS - 1 : Math.floor(random() * RINGS);
   const direction = ring % 2 ? 1 : -1;
   return {
     ring,
@@ -62,21 +71,23 @@ function satellite(random: () => number, visible: boolean): Satellite {
     t: 0,
     out: 0,
     alpha: visible ? 1 : 0,
+    risk,
   };
 }
 
-export function createOrbit(count: number, seed = 7): Orbit {
+export function createOrbit(count: number, seed = 7, options: SkyOptions = {}): Orbit {
   const random = seeded(seed);
-  const satellites = Array.from({ length: count }, () => satellite(random, true));
-  return { satellites, nextDrift: 1.5, random };
+  const risk = Math.min(options.risk ?? 0, count);
+  const satellites = Array.from({ length: count }, (_, i) => satellite(random, true, i < risk));
+  return { satellites, nextDrift: 1.5, random, leaving: options.leaving ?? true };
 }
 
 /** Advance by dt seconds (clamped, so a tab that comes back does not jump). */
 export function step(orbit: Orbit, dt: number): void {
   const d = Math.min(Math.max(dt, 0), 0.05);
   orbit.nextDrift -= d;
-  if (orbit.nextDrift <= 0) {
-    const leaving = orbit.satellites.find((s) => !s.drifting && s.alpha === 1);
+  if (orbit.leaving && orbit.nextDrift <= 0) {
+    const leaving = orbit.satellites.find((s) => !s.drifting && !s.risk && s.alpha === 1);
     if (leaving) leaving.drifting = true;
     orbit.nextDrift = 4 + orbit.random() * 3;
   }
@@ -111,7 +122,7 @@ export function place(s: Satellite, g: Geometry): Placed {
   const { rx, ry } = ellipse(s.ring, s.out, g.radius);
   const x0 = Math.cos(s.angle) * rx;
   const y0 = Math.sin(s.angle) * ry;
-  const red = s.drifting ? Math.min(1, s.t / RED_AFTER) : 0;
+  const red = s.risk ? 1 : s.drifting ? Math.min(1, s.t / RED_AFTER) : 0;
   return {
     x: g.cx + x0 * Math.cos(TILT) - y0 * Math.sin(TILT),
     y: g.cy + x0 * Math.sin(TILT) + y0 * Math.cos(TILT),
