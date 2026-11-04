@@ -141,6 +141,15 @@ cancelled; the overview counts them under its first screen. A second upload of t
 not a month, and the first month has nothing to compare with. Each run trains its own model, so
 the probabilities before and after are shown next to the levels.
 
+With the language model there (`/api/me` says), a button in the corner of every dashboard tab
+opens the copilot, a small window to ask about the run (`POST /api/runs/{id}/copilot`). Its four
+tools (the accounts at a level, one account, what changed, what the data lacks) know the accounts
+by pseudonym only: the browser swaps the names and account numbers in a question for their ids,
+and the ids in the answer back for names, so no name or number from the data reaches the model.
+Numbers are copied from the tools, and a number in an answer that the tools did not return is
+pointed out. The conversation stays in the browser; each question's tools and tokens are logged,
+never its text. There is no usage limit yet.
+
 A user signs in (`/auth/{google,microsoft}/login`, or the dev login: `POST /api/auth/dev-login`,
 or the link `GET /api/auth/dev-login?email=&next=` for tools that open a fresh browser), names their
 company (`POST /api/signup/company`) and waits; an operator (`PULSE_OPERATOR_EMAILS`, verified

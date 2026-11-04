@@ -581,3 +581,124 @@
     border-inline-start: 0;
   }
 }
+
+/* ---------------------------------------------------------------------------- the copilot */
+.chat {
+  display: grid;
+  gap: 16px;
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.turns {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 20px;
+}
+
+.turns li {
+  display: grid;
+  gap: 8px;
+}
+
+.asked {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.answered {
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.answered p,
+.answered ul,
+.answered ol {
+  margin: 0 0 8px;
+}
+
+.answered ul,
+.answered ol {
+  padding-inline-start: 20px;
+}
+
+.problem {
+  margin: 0;
+  color: var(--pulse-muted);
+}
+
+.ask {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.askInput {
+  flex: 1;
+  min-width: 0;
+}
+
+.chatFoot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+/* the copilot afloat: a button in the corner, a small window above the page (no shadow: a line) */
+.floatButton {
+  position: fixed;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  inset-inline-end: 24px;
+  z-index: 200;
+}
+
+.floatPanel {
+  position: fixed;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  inset-inline-end: 24px;
+  z-index: 200;
+  width: min(420px, calc(100vw - 32px));
+  max-height: min(640px, calc(100vh - 120px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px;
+  background: var(--pulse-raised);
+  border: 1px solid var(--pulse-outline);
+  border-radius: 12px;
+}
+
+.floatPanel[hidden] {
+  display: none;
+}
+
+.floatHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.floatTitle {
+  font-size: 22px;
+}
+
+@media (max-width: 600px) {
+  .floatButton {
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    inset-inline-end: 16px;
+  }
+  .floatPanel {
+    bottom: calc(72px + env(safe-area-inset-bottom));
+    inset-inline-end: 16px;
+  }
+}

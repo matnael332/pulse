@@ -353,6 +353,72 @@ describe("the findings in the reader's language", () => {
   });
 });
 
+describe("the copilot", () => {
+  const ask = "POST /api/runs/run1/copilot";
+
+  it("is there only when the language model is", async () => {
+    serve(routes());
+    renderAt("/dashboard/run1");
+    expect(await screen.findByRole("table", {}, LAZY)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: he("copilot.open") })).not.toBeInTheDocument();
+  });
+
+  it("asks with the accounts by id, and answers with their names", async () => {
+    const calls = serve({
+      ...routes(),
+      "GET /api/me": { body: { ...ACTIVE, llm: true } },
+      [ask]: (init?: RequestInit) => {
+        const question = JSON.parse(init!.body as string);
+        return question.history.length === 0
+          ? { body: { text: "acc_000001 בסיכון: 91.0%.", ungrounded: [], tools: ["get_account"] } }
+          : { body: { text: "גם acc_000002.", ungrounded: ["12%"], tools: [] } };
+      },
+    });
+    renderAt("/dashboard/run1");
+    await userEvent.click(await screen.findByRole("button", { name: he("copilot.open") }, LAZY));
+    const dialog = screen.getByRole("dialog", { name: he("copilot.title") });
+    const input = within(dialog).getByRole("textbox", { name: he("copilot.title") });
+    await waitFor(() => expect(input).toHaveFocus());
+
+    await userEvent.type(input, "למה מאפיית הגליל בסיכון?{Enter}");
+    expect(await within(dialog).findByText("מאפיית הגליל בסיכון: 91.0%.")).toBeVisible();
+    const first = calls.find((c) => c.key === ask)!.body as Record<string, unknown>;
+    expect(first.message).toBe("למה acc_000001 בסיכון?"); // the name never leaves
+    expect(first.language).toBe("he");
+    expect(first.history).toEqual([]);
+    expect((first.glossary as Record<string, string>)["reason.payroll_exports"]).toBe(
+      "הפסיקו להפיק שכר",
+    );
+
+    await userEvent.type(input, "ומי עוד?{Enter}");
+    expect(await within(dialog).findByText("גם =HYPERLINK(evil).")).toBeVisible();
+    expect(within(dialog).getByText(he("copilot.unchecked", { values: "12%" }))).toBeVisible();
+    const second = calls.filter((c) => c.key === ask)[1].body as Record<string, unknown>;
+    expect(second.history).toEqual([
+      { role: "user", text: "למה acc_000001 בסיכון?" },
+      { role: "model", text: "acc_000001 בסיכון: 91.0%." }, // ids, as the model wrote them
+    ]);
+
+    await userEvent.keyboard("{Escape}");
+    expect(dialog).not.toBeVisible();
+  });
+
+  it("says why there is no answer", async () => {
+    serve({
+      ...routes(),
+      "GET /api/me": { body: { ...ACTIVE, llm: true } },
+      [ask]: { status: 503, body: { detail: { code: "llm_quota", params: {} } } },
+    });
+    renderAt("/dashboard/run1");
+    await userEvent.click(await screen.findByRole("button", { name: he("copilot.open") }, LAZY));
+    const dialog = screen.getByRole("dialog", { name: he("copilot.title") });
+    await userEvent.click(
+      await within(dialog).findByRole("button", { name: he("copilot.suggest1") }),
+    );
+    expect(await within(dialog).findByText(he("error.llm_quota"))).toBeVisible();
+  });
+});
+
 describe("what changed", () => {
   it("counts the changes since the previous month, and opens the lists", async () => {
     serve({ ...routes(), "GET /api/runs/run1/changes": { body: CHANGES } });

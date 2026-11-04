@@ -153,4 +153,18 @@ export const label = {
   stage: (key: string, lang: Lang) => pick(STAGE_NAMES, key, lang),
   risk: (key: string, lang: Lang) => pick(RISK, key, lang),
   reason: (key: string, lang: Lang) => pick(REASONS, key, lang),
+  /** The words for the codes the copilot's tools return (reasons, levels, data groups), so its
+   * answer uses the screen's words: "reason.billing" -> "בעיות חיוב". */
+  glossary: (lang: Lang): Record<string, string> =>
+    Object.fromEntries(
+      (
+        [
+          ["reason", REASONS],
+          ["level", RISK],
+          ["group", GROUPS],
+        ] as const
+      ).flatMap(([kind, names]) =>
+        Object.keys(names).map((key) => [`${kind}.${key}`, pick(names, key, lang)]),
+      ),
+    ),
 };
