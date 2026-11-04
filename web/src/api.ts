@@ -233,6 +233,15 @@ export interface ScoredAccount {
   reasons: Reason[];
 }
 
+/** The run another is compared with: the previous month of the same kind (see /changes). */
+export interface PreviousRun {
+  id: string;
+  snapshot_date: string | null;
+  finished_at: string | null;
+  created_at: string;
+  summary: RunSummary | null;
+}
+
 export interface Results {
   run: {
     id: string;
@@ -242,6 +251,7 @@ export interface Results {
     finished_at: string | null;
   };
   summary: RunSummary | null;
+  previous?: PreviousRun | null;
   currency?: Currency;
   accounts: ScoredAccount[];
   distribution: {
@@ -283,7 +293,32 @@ export interface Advanced {
   docs: string[];
 }
 
+/** An account that changed since the previous month: its figures now and before. An account no
+ * longer in the data has no figures now; one new in the data has none before. */
+export interface AccountChange {
+  id: string;
+  customer_id: string;
+  name: string;
+  level: ScoredAccount["level"] | null;
+  probability: number | null;
+  rank: number | null;
+  mrr: number | null;
+  reasons: Reason[];
+  level_before: ScoredAccount["level"] | null;
+  probability_before: number | null;
+  rank_before: number | null;
+  mrr_before: number | null;
+}
+
+export type ChangeGroup = "entered_high" | "rose" | "gone";
+
+export type Changes = {
+  base: PreviousRun | null;
+  counts: Record<ChangeGroup, number>;
+} & Record<ChangeGroup, AccountChange[]>;
+
 export const getResults = (id: string) => api<Results>(`/runs/${id}/results`);
+export const getChanges = (id: string) => api<Changes>(`/runs/${id}/changes`);
 export const getAdvanced = (id: string) => api<Advanced>(`/runs/${id}/advanced`);
 export async function getDoc(id: string, name: string): Promise<string> {
   const response = await fetch(`/api/runs/${id}/docs/${name}`, { credentials: "same-origin" });

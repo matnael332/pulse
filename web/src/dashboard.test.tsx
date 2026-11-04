@@ -2,8 +2,9 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import type { Advanced, Results, RunInfo, RunSummary } from "./api";
+import type { Advanced, Changes, Results, RunInfo, RunSummary } from "./api";
 import { riskCsv } from "./dashboard/csv";
+import { label } from "./labels";
 import { en, he, me, renderAt, serve } from "./test-utils";
 
 const ACTIVE = me("active", { status: "active", slug: "acme", name: "Acme" });
@@ -127,6 +128,57 @@ function routes(runs: RunInfo[] = [run("run1")]) {
   };
 }
 
+const medium = (date: string) =>
+  // a day of data, in the reader's own time zone
+  new Intl.DateTimeFormat("he-IL", { dateStyle: "medium" }).format(new Date(`${date}T00:00`));
+
+const CHANGES: Changes = {
+  base: {
+    id: "older",
+    snapshot_date: "2025-08-01",
+    finished_at: "2026-09-26T10:04:00Z",
+    created_at: "2026-09-26T10:00:00Z",
+    summary: SUMMARY,
+  },
+  counts: { entered_high: 1, rose: 1, gone: 1 },
+  entered_high: [
+    {
+      ...RESULTS.accounts[0],
+      mrr: 2400,
+      level_before: null,
+      probability_before: null,
+      rank_before: null,
+      mrr_before: null,
+    },
+  ],
+  rose: [
+    {
+      ...RESULTS.accounts[1],
+      mrr: 700,
+      level_before: "normal",
+      probability_before: 0.1,
+      rank_before: 3,
+      mrr_before: 650,
+    },
+  ],
+  gone: [
+    {
+      id: "acc_000009",
+      customer_id: "10009",
+      name: "מוסך הדרום",
+      level: null,
+      probability: null,
+      rank: null,
+      mrr: null,
+      reasons: [],
+      level_before: "high",
+      probability_before: 0.7,
+      rank_before: 2,
+      mrr_before: 900,
+    },
+  ],
+};
+
 const shekels = (value: number, sign = false) =>
   new Intl.NumberFormat("he-IL", {
     style: "currency",
@@ -154,22 +206,25 @@ describe("the overview", () => {
     expect(screen.getByText("5.0%")).toBeInTheDocument();
   });
 
-  it("shows the change since the previous run of the same kind, a rise in risk in red", async () => {
+  it("shows the change since the run the server compares with, a rise in risk in red", async () => {
     const before: RunSummary = { ...SUMMARY, accounts: 4, high: 0, revenue_at_risk: 1000 };
-    serve(
-      routes([
-        run("run1"),
-        run("real", { demo: false, summary: { ...SUMMARY, high: 9 } }),
-        run("failed", { status: "failed", summary: null }),
-        run("older", { summary: before, finished_at: "2026-09-26T10:04:00Z" }),
-      ]),
-    );
-    renderAt("/dashboard/run1");
-    const vs = he("dashboard.vs", {
-      date: new Intl.DateTimeFormat("he-IL", { dateStyle: "medium" }).format(
-        new Date("2026-09-26T10:04:00Z"),
-      ),
+    serve({
+      ...routes(),
+      "GET /api/runs/run1/results": {
+        body: {
+          ...RESULTS,
+          previous: {
+            id: "older",
+            snapshot_date: "2025-08-01",
+            finished_at: "2026-09-26T10:04:00Z",
+            created_at: "2026-09-26T10:00:00Z",
+            summary: before,
+          },
+        },
+      },
     });
+    renderAt("/dashboard/run1");
+    const vs = he("dashboard.vs", { date: medium("2025-08-01") }); // the month of data, not the run
     expect((await screen.findAllByText(new RegExp(vs), {}, LAZY)).length).toBe(4);
     const signed = new Intl.NumberFormat("he-IL", { signDisplay: "exceptZero" });
     expect(screen.getByText(signed.format(1)).className).toMatch(/bad/); // more at high risk
@@ -242,6 +297,45 @@ describe("the overview", () => {
     const text = await created[0].text();
     expect(text).toContain("Monthly revenue (ILS)");
     expect(text).toContain("High risk");
+  });
+});
+
+describe("what changed", () => {
+  it("counts the changes since the previous month, and opens the lists", async () => {
+    serve({ ...routes(), "GET /api/runs/run1/changes": { body: CHANGES } });
+    renderAt("/dashboard/run1");
+    const title = await screen.findByRole("heading", { name: he("results.changes") }, LAZY);
+    const panel = title.closest("section")!;
+    expect(within(panel).getByText(he("changes.vs", { date: medium("2025-08-01") }))).toBeVisible();
+    for (const key of ["changes.enteredHigh", "changes.rose", "changes.gone"] as const) {
+      expect(within(panel).getByText(he(key)).nextElementSibling).toHaveTextContent("1");
+    }
+    await userEvent.click(within(panel).getByRole("link", { name: he("changes.all") }));
+    const tab = await screen.findByRole("link", { name: he("results.changes") });
+    expect(tab).toHaveAttribute("aria-current", "page");
+    const entered = (
+      await screen.findByRole("heading", { name: he("changes.enteredHigh") }, LAZY)
+    ).closest("section")!;
+    expect(within(entered).getByText("מאפיית הגליל")).toBeInTheDocument();
+    expect(within(entered).getByText(he("changes.new"))).toBeInTheDocument();
+    const rose = screen.getByRole("heading", { name: he("changes.rose") }).closest("section")!;
+    expect(
+      within(rose).getByText(he("changes.from", { value: label.risk("normal", "he") })),
+    ).toBeInTheDocument();
+    const gone = screen.getByRole("heading", { name: he("changes.gone") }).closest("section")!;
+    expect(within(gone).getByText("מוסך הדרום")).toBeInTheDocument();
+    expect(within(gone).getByText(he("changes.goneNote"))).toBeInTheDocument();
+    expect(within(gone).getByText(shekels(900))).toBeInTheDocument(); // its last known revenue
+  });
+
+  it("has nothing to show without a month to compare with", async () => {
+    const first = { ...CHANGES, base: null, counts: { entered_high: 0, rose: 0, gone: 0 } };
+    serve({ ...routes(), "GET /api/runs/run1/changes": { body: first } });
+    renderAt("/dashboard/run1");
+    expect(await screen.findByRole("table", {}, LAZY)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: he("results.changes") })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("link", { name: he("results.changes") }));
+    expect(await screen.findByText(he("dashboard.noCompare"), {}, LAZY)).toBeVisible();
   });
 });
 

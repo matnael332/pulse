@@ -1,7 +1,7 @@
-// The change since the previous run. A run is compared with the previous successful run of the same
-// kind (demo with demo, real with real) that has a summary. A rise in risk is bad; the number of
-// accounts has no good direction.
-import type { RunInfo, RunSummary } from "../api";
+// The change since the previous run. The server names the run a run is compared with (the
+// previous month of the same kind, `results.previous`), so the figures and the list of changes
+// count from the same one. A rise in risk is bad; the number of accounts has no good direction.
+import type { RunSummary } from "../api";
 
 export type Figure = "accounts" | "high" | "elevated" | "revenue_at_risk";
 
@@ -10,15 +10,9 @@ export interface Delta {
   bad: boolean;
 }
 
-/** The run this one is compared with, or null. `runs` newest first, as /api/runs lists them. */
-export function previousRun(runs: RunInfo[], current: { id: string; demo: boolean }) {
-  const index = runs.findIndex((run) => run.id === current.id);
-  if (index === -1) return null;
-  return (
-    runs
-      .slice(index + 1)
-      .find((run) => run.status === "succeeded" && run.summary && run.demo === current.demo) ?? null
-  );
+/** A date to show: a day of data (YYYY-MM-DD) is that day wherever the reader is, not UTC's. */
+export function day(iso: string): Date {
+  return new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T00:00` : iso);
 }
 
 /** One figure's change, or null when either side is unknown. */
