@@ -104,6 +104,7 @@ def server_settings(tmp_path, monkeypatch):
     for name in list(os.environ):
         if name.startswith("PULSE_"):
             monkeypatch.delenv(name)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)  # the site's language model: a fake or none
     return Settings(
         _env_file=None,
         env="development",

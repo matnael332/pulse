@@ -41,10 +41,16 @@ def main(argv: list[str] | None = None) -> int:
 
         worker(settings)
     if args.command == "serve":
+        import logging
+
         import uvicorn
 
         from pulse_server.app import create_app
 
+        # the site's own lines (a failed sign-in, the language model's tokens), as the worker's
+        logging.basicConfig(
+            level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
+        )
         host = "0.0.0.0" if "PORT" in os.environ else "127.0.0.1"
         port = int(os.getenv("PORT", str(DEFAULT_PORT)))
         uvicorn.run(create_app(settings), host=host, port=port, proxy_headers=True)

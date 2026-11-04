@@ -11,7 +11,7 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from pulse_server.deps import ActiveCompany, Config, CurrentUser, Db, is_operator
+from pulse_server.deps import ActiveCompany, Config, CurrentUser, Db, LanguageModel, is_operator
 from pulse_server.models import Company, User
 from pulse_server.security import audit
 from pulse_server.settings import Settings
@@ -42,7 +42,7 @@ def state(user: User, settings: Settings) -> str:
 
 
 @router.get("/me")
-def me(user: CurrentUser, settings: Config) -> dict:
+def me(user: CurrentUser, settings: Config, model: LanguageModel) -> dict:
     return {
         "user": {
             "email": user.email,
@@ -53,6 +53,7 @@ def me(user: CurrentUser, settings: Config) -> dict:
         "is_operator": is_operator(user, settings),
         "company": company_json(user.company) if user.company else None,
         "state": state(user, settings),
+        "llm": model.available,  # whether the language model can be asked (a translation)
     }
 
 

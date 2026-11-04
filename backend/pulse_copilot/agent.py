@@ -10,12 +10,12 @@ from __future__ import annotations
 import os
 
 from pulse_copilot.answer import Answer, Conversation, Recorder
+from pulse_copilot.gemini import DEFAULT_MODEL, make_client
 from pulse_copilot.grounding import ungrounded
 from pulse_copilot.prompts import SYSTEM_INSTRUCTION
 from pulse_copilot.tools import build_tools
 from pulse_copilot.workspace import Workspace
 
-DEFAULT_MODEL = "gemini-3.5-flash-lite"
 MAX_INPUT_CHARS = 2000
 
 
@@ -57,21 +57,7 @@ class Copilot:
 
     def _get_client(self):
         if self._client is None:
-            from google import genai
-            from google.genai import types
-
-            retry = types.HttpRetryOptions(
-                attempts=3,
-                initial_delay=2.0,
-                max_delay=20.0,
-                exp_base=2.0,
-                jitter=1.0,
-                http_status_codes=[408, 429, 500, 502, 503, 504],
-            )
-            self._client = genai.Client(
-                api_key=self._key,
-                http_options=types.HttpOptions(timeout=60_000, retry_options=retry),
-            )
+            self._client = make_client(self._key)
         return self._client
 
     def _config(self, tools: list):

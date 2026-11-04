@@ -11,6 +11,7 @@ from fastapi import Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from pulse_server.db import get_db
+from pulse_server.llm import Llm
 from pulse_server.models import Company, LoginSession, User, utcnow
 from pulse_server.security import hash_token, session_cookie
 from pulse_server.settings import Settings
@@ -20,8 +21,13 @@ def get_settings(request: Request) -> Settings:
     return request.app.state.settings
 
 
+def get_llm(request: Request) -> Llm:
+    return request.app.state.llm
+
+
 Db = Annotated[Session, Depends(get_db)]
 Config = Annotated[Settings, Depends(get_settings)]
+LanguageModel = Annotated[Llm, Depends(get_llm)]
 
 
 def is_operator(user: User, settings: Settings) -> bool:
