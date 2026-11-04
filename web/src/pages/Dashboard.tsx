@@ -1,6 +1,7 @@
-// The dashboard: a finished run's customers at risk, what is at stake and why (the overview), and
-// the model behind it (?view=model). /dashboard opens the latest result, or the data page when
-// there is none yet; a run that has not finished belongs to its step on the data page.
+// The dashboard: a finished run's customers at risk, what is at stake and why (the overview), the
+// accounts that changed since the previous month (?view=changes), and the model behind it
+// (?view=model). /dashboard opens the latest result, or the data page when there is none yet; a
+// run that has not finished belongs to its step on the data page.
 import { Loader } from "@mantine/core";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Link, Navigate, useLocation, useParams, useSearchParams } from "react-router";
@@ -12,6 +13,7 @@ import { useI18n } from "../i18n";
 import { useSession } from "../session";
 
 const Overview = lazy(() => import("../dashboard/Overview"));
+const ChangesView = lazy(() => import("../dashboard/ChangesView"));
 const ModelView = lazy(() => import("../dashboard/ModelView"));
 
 export function Dashboard() {
@@ -53,7 +55,14 @@ export function Dashboard() {
   if (!run || !runs) return <Loader mx="auto" mt="xl" />;
   if (run.status !== "succeeded") return <Navigate to={`/data/runs/${run.id}`} replace />;
 
-  const model = params.get("view") === "model";
+  const asked = params.get("view");
+  const view = asked === "model" || asked === "changes" ? asked : "";
+  const tab = (to: string) => ({
+    to: { search: to ? `?view=${to}` : "" },
+    className: classes.tab,
+    "aria-current": view === to ? ("page" as const) : undefined,
+  });
+  const currency = me?.company?.currency ?? "ILS";
   const summary = run.summary;
   const snapshot = summary?.snapshot_date;
   const count = new Intl.NumberFormat(locale);
@@ -90,22 +99,17 @@ export function Dashboard() {
         </div>
       </header>
       <nav className={classes.tabs}>
-        <Link to={{ search: "" }} className={classes.tab} aria-current={model ? undefined : "page"}>
-          {t("results.business")}
-        </Link>
-        <Link
-          to={{ search: "?view=model" }}
-          className={classes.tab}
-          aria-current={model ? "page" : undefined}
-        >
-          {t("results.advanced")}
-        </Link>
+        <Link {...tab("")}>{t("results.business")}</Link>
+        <Link {...tab("changes")}>{t("results.changes")}</Link>
+        <Link {...tab("model")}>{t("results.advanced")}</Link>
       </nav>
       <Suspense fallback={<Loader mx="auto" mt="xl" />}>
-        {model ? (
+        {view === "model" ? (
           <ModelView runId={run.id} runs={runs} />
+        ) : view === "changes" ? (
+          <ChangesView run={run} currency={currency} />
         ) : (
-          <Overview run={run} runs={runs} currency={me?.company?.currency ?? "ILS"} />
+          <Overview run={run} currency={currency} />
         )}
       </Suspense>
     </div>

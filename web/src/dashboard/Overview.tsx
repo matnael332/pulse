@@ -1,6 +1,6 @@
 // The dashboard's overview of one run: what is at stake (the company's accounts as a sky, the
-// revenue at risk and the counts), who is at risk, why, and the trend. Its own bundle, with the
-// charts.
+// revenue at risk and the counts), what changed since the previous month, who is at risk, why, and
+// the trend. Its own bundle, with the charts.
 import "@mantine/charts/styles.css";
 
 import { Loader } from "@mantine/core";
@@ -19,9 +19,9 @@ import { useI18n } from "../i18n";
 import { Orbit } from "../landing/Orbit";
 import type { Geometry } from "../landing/sky";
 import { AtRiskTable } from "./AtRiskTable";
+import { ChangesPanel, useChanges } from "./ChangesView";
 import { RiskHistogram, TrendChart } from "./Charts";
 import classes from "./Dashboard.module.css";
-import { previousRun } from "./deltas";
 import { Counts, type Facts, Revenue } from "./Kpis";
 import { latestRate } from "./figures";
 import { DataNotes, Findings, TopReasons } from "./Words";
@@ -62,15 +62,8 @@ function Hero({ results, facts }: { results: Results; facts: Facts }) {
   );
 }
 
-export default function Overview({
-  run,
-  runs,
-  currency,
-}: {
-  run: RunInfo;
-  runs: RunInfo[];
-  currency: Currency;
-}) {
+export default function Overview({ run, currency }: { run: RunInfo; currency: Currency }) {
+  const changes = useChanges(run.id);
   const [results, setResults] = useState<Results | null>(null);
   const [problem, setProblem] = useState<Problem | null | undefined>(undefined);
 
@@ -92,7 +85,7 @@ export default function Overview({
   };
   const facts: Facts = {
     summary,
-    previous: previousRun(runs, run),
+    previous: results.previous ?? null,
     currency: money,
     rate: latestRate(results.trend),
   };
@@ -100,6 +93,7 @@ export default function Overview({
   return (
     <div className={classes.stack}>
       <Hero results={results} facts={facts} />
+      {changes?.base && <ChangesPanel changes={changes} />}
       <AtRiskTable results={results} currency={money} />
       <div className={classes.row}>
         <TrendChart trend={results.trend} />

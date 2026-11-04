@@ -1,16 +1,16 @@
 // The headline figures: the revenue at risk (the dashboard's answer) and the counts, each with
-// its change since the previous run of the same kind, named by that run's date. A figure that is
+// its change since the previous month's run, named by the date of its data. A figure that is
 // not known is a grey dash, and so is a change with nothing to compare.
 import { VisuallyHidden } from "@mantine/core";
 
-import type { Currency, RunInfo, RunSummary } from "../api";
+import type { Currency, PreviousRun, RunSummary } from "../api";
 import { useI18n } from "../i18n";
 import classes from "./Dashboard.module.css";
-import { delta, type Figure } from "./deltas";
+import { day, delta, type Figure } from "./deltas";
 
 export interface Facts {
   summary: RunSummary;
-  previous: RunInfo | null;
+  previous: PreviousRun | null;
   currency: Currency;
   rate: { month: string; rate: number } | null;
 }
@@ -41,7 +41,9 @@ function Change({ facts, figure, money }: { facts: Facts; figure: Figure; money?
   const { t } = useI18n();
   const f = useFormats(facts.currency);
   const change = delta(figure, facts.summary, facts.previous?.summary ?? null);
-  const when = facts.previous?.finished_at ?? facts.previous?.created_at;
+  // named by the month of data it compares with; by when it ran only if that is unknown
+  const when =
+    facts.previous?.snapshot_date ?? facts.previous?.finished_at ?? facts.previous?.created_at;
   if (!change || !when) {
     return (
       <dd className={classes.change} title={t("dashboard.noCompare")}>
@@ -55,7 +57,7 @@ function Change({ facts, figure, money }: { facts: Facts; figure: Figure; money?
       <span dir="ltr" className={change.bad ? classes.bad : undefined}>
         {(money ? f.moneyChange : f.change).format(change.change)}
       </span>{" "}
-      {t("dashboard.vs", { date: f.date.format(new Date(when)) })}
+      {t("dashboard.vs", { date: f.date.format(day(when)) })}
     </dd>
   );
 }

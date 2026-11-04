@@ -548,3 +548,36 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------------------------------------------------------------------------- what changed */
+/* the overview's panel: the three counts in one row, under a hairline */
+.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ruled {
+  border-top: 1px solid var(--pulse-line);
+}
+
+/* a title with its note takes the room left by the count or the link beside it, and wraps */
+.grow {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* a group with no accounts: one short line under its title, not a blank block */
+.inset {
+  padding: 0 24px 24px;
+}
+
+@media (max-width: 900px) {
+  /* the three counts stay in one row on a phone */
+  .three > div:nth-child(n) {
+    border-top: 0;
+    border-inline-start: 1px solid var(--pulse-line);
+    padding: 14px 16px;
+  }
+  .three > div:first-child {
+    border-inline-start: 0;
+  }
+}

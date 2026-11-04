@@ -18,6 +18,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, PlainTextResponse
 
 from pulse_server import jobs, scores
+from pulse_server.changes import artifacts_of, base_run, compare, nothing, run_ref
 from pulse_server.deps import ActiveCompany, Config, Db
 from pulse_server.errors import http_error
 from pulse_server.models import Run
@@ -69,7 +70,7 @@ def _names(entity_map: Path) -> dict[str, tuple[str, str]]:
         return {r["pseudo_id"]: (r["source_id"], r["name"]) for r in csv.DictReader(handle)}
 
 
-@lru_cache(maxsize=16)
+@lru_cache(maxsize=32)  # a dashboard holds two runs: the one shown and its base
 def _business(artifacts: str, entity_map: str, _stamp: tuple) -> dict:
     """The business view's data (cached per run and file times: runs never change)."""
     art = Path(artifacts)
@@ -137,13 +138,18 @@ def _stamp(*paths: Path) -> tuple:
     return tuple(p.stat().st_mtime_ns if p.exists() else 0 for p in paths)
 
 
-@router.get("/{run_id}/results")
-def results(run_id: str, company: ActiveCompany, db: Db, settings: Config) -> dict:
-    run, art, entity_map = _artifacts(settings, db, company, run_id)
+def _view(art: Path, entity_map: Path) -> dict:
+    """A run's business view (cached and shared: read it, never change it)."""
     if not (art / "scores_current.csv").exists():
         raise HTTPException(404, "no results for this run")
     stamp = _stamp(art / "scores_current.csv", art / "score_rows.csv", entity_map)
-    business = dict(_business(str(art), str(entity_map), stamp))
+    return _business(str(art), str(entity_map), stamp)
+
+
+@router.get("/{run_id}/results")
+def results(run_id: str, company: ActiveCompany, db: Db, settings: Config) -> dict:
+    run, art, entity_map = _artifacts(settings, db, company, run_id)
+    business = dict(_view(art, entity_map))
     report = run.ingestion.report or {}
     return {
         "run": {
@@ -155,6 +161,8 @@ def results(run_id: str, company: ActiveCompany, db: Db, settings: Config) -> di
         },
         # The revenue is read from the artifacts, so runs summarised before it was recorded have it.
         "summary": {**(run.summary or {}), **business.pop("revenue")},
+        # The run the figures' changes are counted from: the same base as /changes.
+        "previous": run_ref(base_run(db, settings, company, run)),
         "currency": company.currency,
         **business,
         "data": {
@@ -170,6 +178,18 @@ def results(run_id: str, company: ActiveCompany, db: Db, settings: Config) -> di
             )
         },
     }
+
+
+@router.get("/{run_id}/changes")
+def changes(run_id: str, company: ActiveCompany, db: Db, settings: Config) -> dict:
+    """The accounts that changed since the previous month (see ``changes``)."""
+    run, art, entity_map = _artifacts(settings, db, company, run_id)
+    now = _view(art, entity_map)["accounts"]  # 404 for a run without results, base or not
+    base = base_run(db, settings, company, run)
+    if base is None:
+        return {"base": None, **nothing()}
+    before = _view(artifacts_of(settings, company, base), entity_map)["accounts"]
+    return {"base": run_ref(base), **compare(now, before)}
 
 
 @router.get("/{run_id}/advanced")

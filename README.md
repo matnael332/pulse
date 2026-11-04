@@ -128,6 +128,15 @@ is read: the results carry it per account and, in the summary, the revenue at hi
 total (also kept in each run's summary, for comparing runs), shown in the company's currency
 (ILS, USD or EUR; `PUT /api/company/currency`).
 
+A run is compared with the previous month: the company's run of the latest data date before its
+own, real with real (the demo has its own ids and is never compared), that succeeded and still has
+its scores. The figures show their change since that run, named by its data date, and the "what
+changed" tab (`?view=changes`, `/api/runs/{id}/changes`) lists the accounts that entered high risk,
+the ones whose risk went up, and the ones at risk then that are no longer scored, most likely
+cancelled; the overview counts them under its first screen. A second upload of the same month is
+not a month, and the first month has nothing to compare with. Each run trains its own model, so
+the probabilities before and after are shown next to the levels.
+
 A user signs in (`/auth/{google,microsoft}/login`, or the dev login: `POST /api/auth/dev-login`,
 or the link `GET /api/auth/dev-login?email=&next=` for tools that open a fresh browser), names their
 company (`POST /api/signup/company`) and waits; an operator (`PULSE_OPERATOR_EMAILS`, verified
