@@ -320,6 +320,29 @@ export type Changes = {
 
 export const getResults = (id: string) => api<Results>(`/runs/${id}/results`);
 export const getChanges = (id: string) => api<Changes>(`/runs/${id}/changes`);
+/** One turn of a conversation with the copilot, as sent: accounts named by id only. */
+export interface CopilotTurn {
+  role: "user" | "model";
+  text: string;
+}
+
+export interface CopilotAnswer {
+  text: string; // markdown; accounts named by id (the browser names them)
+  ungrounded: string[]; // numbers in the answer the tools did not return
+  tools: string[];
+}
+
+/** One question about a run; `message` and `history` with accounts named by id only. */
+export const askCopilot = (
+  id: string,
+  question: {
+    message: string;
+    history: CopilotTurn[];
+    language: Lang;
+    glossary: Record<string, string>;
+  },
+) => api<CopilotAnswer>(`/runs/${id}/copilot`, { method: "POST", body: question });
+
 /** The run's insights in `language`: as written, or translated once by the language model. */
 export const translateInsights = (id: string, language: Lang) =>
   api<{ insights: Results["insights"]; translated: boolean }>(`/runs/${id}/insights/translation`, {

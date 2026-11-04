@@ -1,9 +1,13 @@
 """The ops copilot's offline path on the toy artifacts: tools, quick replies and attachments."""
 
+from types import SimpleNamespace
+
 import pytest
 
 from pulse_api.batch import frame_to_records, read_records_csv
+from pulse_copilot.agent import Copilot
 from pulse_copilot.answer import Conversation
+from pulse_copilot.prompts import SYSTEM_INSTRUCTION
 from pulse_copilot.quick import ACTIONS, quick_answer
 from pulse_copilot.tools import build_tools
 from pulse_copilot.workspace import Workspace
@@ -48,3 +52,41 @@ def test_workspace_reads_the_customer_folders_from_the_environment(tmp_path, mon
     workspace = Workspace.from_env()
     assert workspace.artifacts == tmp_path / "artifacts"
     assert workspace.runs == tmp_path / "runs"
+
+
+class FakeModels:
+    """Gemini with automatic function calling: it calls one tool, then answers."""
+
+    def __init__(self, error=None):
+        self.error, self.configs = error, []
+
+    def generate_content(self, *, model, contents, config):
+        self.configs.append(config)
+        if self.error:
+            raise self.error
+        tools = {f.__name__: f for f in config.tools}
+        tools["get_model_metrics"]()
+        usage = SimpleNamespace(
+            prompt_token_count=10, candidates_token_count=5, total_token_count=15
+        )
+        return SimpleNamespace(text="The model is fine. ", usage_metadata=usage)
+
+
+def test_the_copilot_asks_with_its_instruction_and_tools(workspace):
+    models = FakeModels()
+    answer = Copilot(workspace, client=SimpleNamespace(models=models)).ask("How is the model?")
+    config = models.configs[0]
+    assert config.system_instruction == SYSTEM_INSTRUCTION
+    assert len(config.tools) == 8
+    assert answer.text == "The model is fine."
+    assert [call.name for call in answer.tool_calls] == ["get_model_metrics"]
+    assert "metrics.json" in answer.sources and answer.ungrounded == []
+    assert answer.usage == {"prompt_tokens": 10, "output_tokens": 5, "total_tokens": 15}
+
+
+def test_a_failed_call_is_a_readable_answer(workspace):
+    quota = Exception("429 RESOURCE_EXHAUSTED")
+    quota.code = 429
+    client = SimpleNamespace(models=FakeModels(error=quota))
+    answer = Copilot(workspace, client=client).ask("How is the model?")
+    assert answer.error == "Exception" and "quota" in answer.text

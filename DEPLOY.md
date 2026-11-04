@@ -123,6 +123,6 @@ The compose project is named `pulse`, so the volumes are always `pulse_pulse-dat
 
 ## Not yet (the rest of step 6)
 
-HTTPS and a domain, a managed database, the copilot and cost tracking on the site, and data
+HTTPS and a domain, a managed database, the language model's cost tracking and limits, and data
 retention. Companies upload, run and read their results on the site; the
 shell commands above remain for the operator.

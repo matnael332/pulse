@@ -1,7 +1,8 @@
 // The dashboard: a finished run's customers at risk, what is at stake and why (the overview), the
 // accounts that changed since the previous month (?view=changes), and the model behind it
-// (?view=model). /dashboard opens the latest result, or the data page when there is none yet; a
-// run that has not finished belongs to its step on the data page.
+// (?view=model); on every tab, the copilot afloat in the corner when the language model is there.
+// /dashboard opens the latest result, or the data page when there is none yet; a run that has not
+// finished belongs to its step on the data page.
 import { Loader } from "@mantine/core";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Link, Navigate, useLocation, useParams, useSearchParams } from "react-router";
@@ -15,6 +16,9 @@ import { useSession } from "../session";
 const Overview = lazy(() => import("../dashboard/Overview"));
 const ChangesView = lazy(() => import("../dashboard/ChangesView"));
 const ModelView = lazy(() => import("../dashboard/ModelView"));
+const FloatingCopilot = lazy(() =>
+  import("../dashboard/Copilot").then((m) => ({ default: m.FloatingCopilot })),
+);
 
 export function Dashboard() {
   const { runId } = useParams();
@@ -112,6 +116,11 @@ export function Dashboard() {
           <Overview run={run} currency={currency} />
         )}
       </Suspense>
+      {me?.llm && (
+        <Suspense fallback={null}>
+          <FloatingCopilot runId={run.id} />
+        </Suspense>
+      )}
     </div>
   );
 }

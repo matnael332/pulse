@@ -24,6 +24,11 @@ window.ResizeObserver = class {
   unobserve() {}
   disconnect() {}
 };
+// the copilot's growing text box listens for fonts that finish loading
+Object.defineProperty(document, "fonts", {
+  configurable: true,
+  value: { addEventListener: vi.fn(), removeEventListener: vi.fn(), ready: Promise.resolve() },
+});
 
 afterEach(() => {
   cleanup();
