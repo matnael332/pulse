@@ -13,15 +13,19 @@ import json
 import re
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, PlainTextResponse
+from pydantic import BaseModel
 
 from pulse_server import jobs, scores
 from pulse_server.changes import artifacts_of, base_run, compare, nothing, run_ref
-from pulse_server.deps import ActiveCompany, Config, Db
+from pulse_server.deps import ActiveCompany, Config, Db, LanguageModel
 from pulse_server.errors import http_error
+from pulse_server.llm import LlmError
 from pulse_server.models import Run
+from pulse_server.translate import TranslationInvalid, translate
 from pulse_server.uploads import company_run
 
 router = APIRouter(prefix="/api/runs", tags=["results"])
@@ -45,6 +49,13 @@ TEST_METRICS = (
 )
 TOP_FEATURES = 15
 BINS = 10
+INSIGHTS = ("headline", "key_findings", "recommendations", "data_caveats", "source", "language")
+NO_ANSWER = {  # LlmError codes -> HTTP status
+    "llm_unavailable": 503,
+    "llm_quota": 503,
+    "llm_timeout": 504,
+    "llm_failed": 502,
+}
 
 
 def _read_json(path: Path) -> dict:
@@ -105,7 +116,6 @@ def _business(artifacts: str, entity_map: str, _stamp: tuple) -> dict:
         {"month": month, "rate": values.get("positive_rate"), "rows": values.get("rows")}
         for month, values in sorted((eda.get("monthly_positive_rate") or {}).items())
     ]
-    insights = _read_json(art / "narratives.json").get("insights") or {}
     contract = _read_json(art / "dataset_contract.json")
     return {
         "revenue": scores.revenue({a["id"]: a["level"] for a in accounts}, mrr),
@@ -119,19 +129,15 @@ def _business(artifacts: str, entity_map: str, _stamp: tuple) -> dict:
         },
         "trend": trend,
         "key_numbers": eda.get("key_numbers") or [],
-        "insights": {
-            k: insights.get(k)
-            for k in (
-                "headline",
-                "key_findings",
-                "recommendations",
-                "data_caveats",
-                "source",
-                "language",
-            )
-        },
+        "insights": _insights(art),
         "groups": contract.get("data_groups") or {},
     }
+
+
+def _insights(art: Path) -> dict:
+    """What the language model found, as the screens show it (or the run's general text)."""
+    insights = _read_json(art / "narratives.json").get("insights") or {}
+    return {k: insights.get(k) for k in INSIGHTS}
 
 
 def _stamp(*paths: Path) -> tuple:
@@ -190,6 +196,29 @@ def changes(run_id: str, company: ActiveCompany, db: Db, settings: Config) -> di
         return {"base": None, **nothing()}
     before = _view(artifacts_of(settings, company, base), entity_map)["accounts"]
     return {"base": run_ref(base), **compare(now, before)}
+
+
+class Translation(BaseModel):
+    language: Literal["he", "en"]
+
+
+@router.post("/{run_id}/insights/translation")
+def translation(
+    run_id: str,
+    body: Translation,
+    company: ActiveCompany,
+    db: Db,
+    settings: Config,
+    model: LanguageModel,
+) -> dict:
+    """The run's insights in ``language``: as written, kept, or translated now (see translate)."""
+    _run_row, art, _ = _artifacts(settings, db, company, run_id)
+    try:
+        return translate(_insights(art), body.language, art.parent / "translations", model)
+    except LlmError as exc:
+        raise http_error(NO_ANSWER.get(exc.code, 502), exc.code) from exc
+    except TranslationInvalid as exc:
+        raise http_error(502, "translation_invalid") from exc
 
 
 @router.get("/{run_id}/advanced")

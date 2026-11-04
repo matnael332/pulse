@@ -10,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 
 from pulse_server import account, admin, auth, results, uploads
 from pulse_server.db import make_engine
+from pulse_server.llm import Llm
 from pulse_server.oidc import OidcClient
 from pulse_server.security import guard
 from pulse_server.settings import Settings
@@ -17,9 +18,13 @@ from pulse_server.site import mount_site
 
 
 def create_app(
-    settings: Settings | None = None, *, oidc_transport: httpx.BaseTransport | None = None
+    settings: Settings | None = None,
+    *,
+    oidc_transport: httpx.BaseTransport | None = None,
+    llm: Llm | None = None,
 ) -> FastAPI:
-    """The app; ``oidc_transport`` replaces the network to the sign-in providers (tests)."""
+    """The app; ``oidc_transport`` replaces the network to the sign-in providers and ``llm`` the
+    language model (tests)."""
     settings = settings or Settings()
     development = settings.env == "development"
     app = FastAPI(
@@ -32,6 +37,7 @@ def create_app(
     app.state.engine = make_engine(settings.database_url)
     app.state.sessions = sessionmaker(app.state.engine, expire_on_commit=False)
     app.state.oidc = OidcClient(oidc_transport)
+    app.state.llm = llm or Llm.from_env()
     app.middleware("http")(guard)
     app.include_router(auth.router)
     app.include_router(auth.browser_router)

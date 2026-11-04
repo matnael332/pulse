@@ -22,6 +22,7 @@ export interface Me {
   is_operator: boolean;
   company: Company | null;
   state: State;
+  llm?: boolean; // whether the language model can be asked (a translation)
 }
 
 /** A refusal: a stable code and its params (the site words it, see i18n's error.<code>). */
@@ -319,6 +320,12 @@ export type Changes = {
 
 export const getResults = (id: string) => api<Results>(`/runs/${id}/results`);
 export const getChanges = (id: string) => api<Changes>(`/runs/${id}/changes`);
+/** The run's insights in `language`: as written, or translated once by the language model. */
+export const translateInsights = (id: string, language: Lang) =>
+  api<{ insights: Results["insights"]; translated: boolean }>(`/runs/${id}/insights/translation`, {
+    method: "POST",
+    body: { language },
+  });
 export const getAdvanced = (id: string) => api<Advanced>(`/runs/${id}/advanced`);
 export async function getDoc(id: string, name: string): Promise<string> {
   const response = await fetch(`/api/runs/${id}/docs/${name}`, { credentials: "same-origin" });

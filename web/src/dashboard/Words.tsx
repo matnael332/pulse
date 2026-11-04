@@ -1,8 +1,12 @@
 // The dashboard's words: why the accounts at high risk are at risk (the reasons they share), what
-// the language model found, and what to know about the data the model learnt from.
-import type { Results } from "../api";
+// the language model found (in the reader's language: translated once when the run was written in
+// the other one), and what to know about the data the model learnt from.
+import { useEffect, useRef, useState } from "react";
+
+import { translateInsights, type Results } from "../api";
 import { useI18n } from "../i18n";
 import { label } from "../labels";
+import { useSession } from "../session";
 import classes from "./Dashboard.module.css";
 import { topReasons } from "./figures";
 
@@ -37,9 +41,42 @@ export function TopReasons({ results }: { results: Results }) {
   );
 }
 
-export function Findings({ insights }: { insights: Results["insights"] }) {
+export function Findings({ insights, runId }: { insights: Results["insights"]; runId: string }) {
   const { t, lang } = useI18n();
+  const { me } = useSession();
+  // the translations asked for, by run and language (null: none came, the original stays)
+  const [translations, setTranslations] = useState<Record<string, Results["insights"] | null>>({});
+  const asked = useRef(new Set<string>());
+  const key = `${runId}:${lang}`;
+  const wanted = Boolean(insights.headline) && insights.language !== lang && Boolean(me?.llm);
+
+  useEffect(() => {
+    if (!wanted || asked.current.has(key)) return;
+    asked.current.add(key);
+    translateInsights(runId, lang)
+      .then((answer) =>
+        setTranslations((was) => ({ ...was, [key]: answer.translated ? answer.insights : null })),
+      )
+      .catch(() => setTranslations((was) => ({ ...was, [key]: null })));
+  }, [wanted, key, runId, lang]);
+
   if (!insights.headline) return null;
+  const translation = wanted ? translations[key] : undefined;
+  const pending = wanted && !(key in translations);
+  const shown = translation ?? insights;
+  const other = insights.language === "he" ? "results.otherLanguageHe" : "results.otherLanguage";
+  const from = insights.language === "he" ? "results.translatedFromHe" : "results.translatedFromEn";
+  const notes = [
+    insights.source === "template" ? t("results.template") : null,
+    translation
+      ? t(from)
+      : pending
+        ? t("results.translating")
+        : insights.source !== "template" && insights.language !== lang
+          ? t(other)
+          : null,
+  ].filter((note): note is string => note !== null);
+
   return (
     <section className={classes.panel} aria-labelledby="findings-title">
       <div className={classes.panelHead}>
@@ -47,37 +84,35 @@ export function Findings({ insights }: { insights: Results["insights"] }) {
           {t("results.insights")}
         </h2>
       </div>
-      <div dir={insights.language === "he" ? "rtl" : "ltr"} className={classes.columns}>
-        <p className={classes.headline}>{insights.headline}</p>
-        {(insights.key_findings ?? []).length > 0 && (
+      <div dir={shown.language === "he" ? "rtl" : "ltr"} className={classes.columns}>
+        <p className={classes.headline}>{shown.headline}</p>
+        {(shown.key_findings ?? []).length > 0 && (
           <ul className={classes.list}>
-            {insights.key_findings!.map((f) => (
+            {shown.key_findings!.map((f) => (
               <li key={f.title}>
                 <b>{f.title}.</b> {f.evidence} {f.business_meaning}
               </li>
             ))}
           </ul>
         )}
-        {(insights.recommendations ?? []).length > 0 && (
+        {(shown.recommendations ?? []).length > 0 && (
           <>
             <p className={classes.subhead}>{t("results.recommendations")}</p>
             <ul className={classes.list}>
-              {insights.recommendations!.map((r) => (
+              {shown.recommendations!.map((r) => (
                 <li key={r}>{r}</li>
               ))}
             </ul>
           </>
         )}
       </div>
-      {(insights.source === "template" || insights.language !== lang) && (
-        <p className={classes.note}>
-          {insights.source === "template"
-            ? t("results.template")
-            : insights.language === "he"
-              ? t("results.otherLanguageHe")
-              : t("results.otherLanguage")}
-        </p>
-      )}
+      <div aria-live="polite">
+        {notes.map((note) => (
+          <p key={note} className={classes.note}>
+            {note}
+          </p>
+        ))}
+      </div>
     </section>
   );
 }

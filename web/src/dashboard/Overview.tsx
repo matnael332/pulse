@@ -99,7 +99,7 @@ export default function Overview({ run, currency }: { run: RunInfo; currency: Cu
         <TrendChart trend={results.trend} />
         <RiskHistogram results={results} />
       </div>
-      <Findings insights={results.insights} />
+      <Findings insights={results.insights} runId={results.run.id} />
       <div className={classes.split}>
         <TopReasons results={results} />
         <DataNotes results={results} />

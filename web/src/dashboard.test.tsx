@@ -300,6 +300,59 @@ describe("the overview", () => {
   });
 });
 
+describe("the findings in the reader's language", () => {
+  const HEBREW = {
+    ...RESULTS.insights,
+    headline: "שני לקוחות צריכים שיחה.",
+    key_findings: [{ title: "שכר", evidence: "אחד הפסיק", business_meaning: "סימן" }],
+    recommendations: ["להתקשר אליהם"],
+    language: "he",
+  };
+  const translation = "POST /api/runs/run1/insights/translation";
+
+  it("are translated once, and kept while the language goes back and forth", async () => {
+    const calls = serve({
+      ...routes(),
+      "GET /api/me": { body: { ...ACTIVE, llm: true } },
+      [translation]: { body: { insights: HEBREW, translated: true } },
+    });
+    renderAt("/dashboard/run1");
+    expect(await screen.findByText("שני לקוחות צריכים שיחה.", {}, LAZY)).toBeVisible();
+    expect(screen.getByText(he("results.translatedFromEn"))).toBeInTheDocument();
+    expect(screen.getByText(he("results.template"))).toBeInTheDocument(); // still the general text
+    expect(calls.filter((c) => c.key === translation)).toEqual([
+      { key: translation, body: { language: "he" } },
+    ]);
+    await userEvent.click(screen.getByRole("button", { name: he("lang.switch") }));
+    expect(await screen.findByText("Two accounts need a call.")).toBeVisible(); // as written
+    await userEvent.click(screen.getByRole("button", { name: en("lang.switch") }));
+    expect(await screen.findByText("שני לקוחות צריכים שיחה.")).toBeVisible();
+    expect(calls.filter((c) => c.key === translation)).toHaveLength(1);
+  });
+
+  it("stay as written without the language model", async () => {
+    const calls = serve(routes());
+    renderAt("/dashboard/run1");
+    expect(await screen.findByText("Two accounts need a call.", {}, LAZY)).toBeVisible();
+    expect(calls.some((c) => c.key === translation)).toBe(false);
+  });
+
+  it("stay as written, with no error, when the model does not answer", async () => {
+    serve({
+      ...routes(),
+      "GET /api/me": { body: { ...ACTIVE, llm: true } },
+      [translation]: { status: 503, body: { detail: { code: "llm_quota", params: {} } } },
+    });
+    renderAt("/dashboard/run1");
+    expect(await screen.findByText("Two accounts need a call.", {}, LAZY)).toBeVisible();
+    await waitFor(() =>
+      expect(screen.queryByText(he("results.translating"))).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText("Two accounts need a call.")).toBeVisible();
+    expect(screen.queryByText(he("error.llm_quota"))).not.toBeInTheDocument();
+  });
+});
+
 describe("what changed", () => {
   it("counts the changes since the previous month, and opens the lists", async () => {
     serve({ ...routes(), "GET /api/runs/run1/changes": { body: CHANGES } });
