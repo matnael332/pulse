@@ -127,10 +127,12 @@ model, the clean data or the scored rows. Of the scored rows only each account's
 is read: the results carry it per account and, in the summary, the revenue at high risk and in
 total (also kept in each run's summary, for comparing runs), shown in the company's currency
 (ILS, USD or EUR; `PUT /api/company/currency`). Read in the other language, the findings are
-translated once by the language model (`POST /api/runs/{id}/insights/translation`; the general
-text of a run without the model too), checked (the same items, every percentage as it was) and
-kept beside the run's artifacts (`runs/<id>/translations/`), so the next reader gets them without
-a call; without the model (`/api/me` says whether it is there) they stay as written.
+translated once by the language model (`POST /api/runs/{id}/insights/translation`), checked (the
+same items, every percentage as it was) and kept beside the run's artifacts
+(`runs/<id>/translations/`), so the next reader gets them without a call; without the model
+(`/api/me` says whether it is there) they stay as written. A run without the model has only the
+general text, which is technical and whose figures are on the page already: the dashboard leaves
+it out (`insights.md` keeps it).
 
 A run is compared with the previous month: the company's run of the latest data date before its
 own, real with real (the demo has its own ids and is never compared), that succeeded and still has

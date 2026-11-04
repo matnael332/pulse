@@ -10,6 +10,7 @@ import { Link, Navigate, useLocation, useParams, useSearchParams } from "react-r
 import { ApiError, getMyCompany, getRun, listRuns, type Problem, type RunInfo } from "../api";
 import { ErrorNotice } from "../components/ErrorNotice";
 import classes from "../dashboard/Dashboard.module.css";
+import { day } from "../dashboard/deltas";
 import { useI18n } from "../i18n";
 import { useSession } from "../session";
 
@@ -95,7 +96,7 @@ export function Dashboard() {
             <span>
               {t("run.snapshot", {
                 date: new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
-                  new Date(snapshot),
+                  day(snapshot),
                 ),
               })}
             </span>

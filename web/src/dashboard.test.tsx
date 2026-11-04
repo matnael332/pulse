@@ -73,7 +73,7 @@ const RESULTS: Results = {
     headline: "Two accounts need a call.",
     key_findings: [{ title: "Payroll", evidence: "1 stopped", business_meaning: "a sign" }],
     recommendations: ["Call them"],
-    source: "template",
+    source: "llm",
     language: "en",
   },
   groups: { missing: ["shifts"] },
@@ -240,7 +240,7 @@ describe("the overview", () => {
     expect(within(table).getByText("מאפיית הגליל")).toBeInTheDocument();
     expect(within(table).getByText("הפסיקו להפיק שכר")).toBeInTheDocument();
     expect(within(table).getByText(shekels(2400))).toBeInTheDocument();
-    expect(screen.getByText(he("results.template"))).toBeInTheDocument();
+    expect(screen.getByText("Two accounts need a call.")).toBeInTheDocument(); // what the model found
     expect(screen.getByText(he("results.lowConfidence"))).toBeInTheDocument();
     expect(screen.getByText(he("results.groupsMissing", { groups: "משמרות" }))).toBeInTheDocument();
     expect(screen.queryByText("10003")).not.toBeInTheDocument(); // high risk is shown first
@@ -250,6 +250,61 @@ describe("the overview", () => {
     await userEvent.type(screen.getByRole("searchbox", { name: he("results.search") }), "10002");
     expect(within(table).queryByText("מאפיית הגליל")).not.toBeInTheDocument();
     expect(within(table).getByText("=HYPERLINK(evil)")).toBeInTheDocument();
+  });
+
+  it("words every reason: a category, a missing value, a feature of its own", async () => {
+    const odd: Results = {
+      ...RESULTS,
+      accounts: [
+        {
+          ...RESULTS.accounts[2],
+          reasons: [
+            {
+              code: "industry",
+              feature: "industry",
+              value: "retail",
+              typical: "restaurant",
+              contribution: 0.1,
+            },
+            {
+              code: "labor_cost",
+              feature: "labor_cost",
+              value: null,
+              typical: 1200.5,
+              contribution: 0.05,
+            },
+          ],
+        },
+      ],
+    };
+    serve({ ...routes(), "GET /api/runs/run1/results": { body: odd } });
+    renderAt("/dashboard/run1");
+    // none at high risk, so the table opens empty: show them all
+    await userEvent.click(await screen.findByRole("radio", { name: he("results.all") }, LAZY));
+    const table = screen.getByRole("table");
+    expect(within(table).getByText("עלות שכר")).toBeInTheDocument();
+    expect(within(table).getByText("ענף")).toBeInTheDocument(); // its tooltip is worded on render
+  });
+
+  it("leaves out the general text of a run without the language model", async () => {
+    const general = { ...RESULTS, insights: { ...RESULTS.insights, source: "template" } };
+    const calls = serve({
+      ...routes(),
+      "GET /api/me": { body: { ...ACTIVE, llm: true } },
+      "GET /api/runs/run1/results": { body: general },
+    });
+    renderAt("/dashboard/run1");
+    expect(await screen.findByRole("table", {}, LAZY)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: he("results.insights") })).not.toBeInTheDocument();
+    expect(calls.some((c) => c.key.includes("/insights/translation"))).toBe(false);
+  });
+
+  it("dates the page by the day of its data", async () => {
+    serve(routes());
+    renderAt("/dashboard/run1");
+    expect(
+      await screen.findByText(he("run.snapshot", { date: medium("2025-09-01") }), {}, LAZY),
+    ).toBeVisible();
   });
 
   it("counts the reasons of the accounts at high risk", async () => {
@@ -319,7 +374,6 @@ describe("the findings in the reader's language", () => {
     renderAt("/dashboard/run1");
     expect(await screen.findByText("שני לקוחות צריכים שיחה.", {}, LAZY)).toBeVisible();
     expect(screen.getByText(he("results.translatedFromEn"))).toBeInTheDocument();
-    expect(screen.getByText(he("results.template"))).toBeInTheDocument(); // still the general text
     expect(calls.filter((c) => c.key === translation)).toEqual([
       { key: translation, body: { language: "he" } },
     ]);

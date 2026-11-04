@@ -218,8 +218,8 @@ export const retryRun = (id: string) => api<RunInfo>(`/runs/${id}/retry`, { meth
 export interface Reason {
   code: string;
   feature: string;
-  value: number;
-  typical: number;
+  value: number | string | null; // text for a category (an industry), null when not recorded
+  typical: number | string | null;
   contribution: number;
 }
 
