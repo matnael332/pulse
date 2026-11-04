@@ -5,7 +5,7 @@ import { IconDownload, IconSearch } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 
 import type { Currency, Results, ScoredAccount } from "../api";
-import { useI18n } from "../i18n";
+import { type Lang, useI18n } from "../i18n";
 import { label } from "../labels";
 import { download, riskCsv } from "./csv";
 import classes from "./Dashboard.module.css";
@@ -13,7 +13,10 @@ import classes from "./Dashboard.module.css";
 const PAGE = 50;
 type Filter = "all" | ScoredAccount["level"];
 
-function number(value: number, digits = 2): string {
+/** A reason's value as the tooltip says it: a number, a category's words, or a dash. */
+function say(value: number | string | null, lang: Lang, digits = 2): string {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "string") return label.value(value, lang);
   return Number.isInteger(value) ? String(value) : value.toFixed(digits);
 }
 
@@ -152,8 +155,8 @@ export function AtRiskTable({ results, currency }: { results: Results; currency:
                           <Tooltip
                             key={r.feature}
                             label={t("results.reasonTip", {
-                              value: number(r.value),
-                              typical: number(r.typical),
+                              value: say(r.value, lang),
+                              typical: say(r.typical, lang),
                             })}
                           >
                             <span className={classes.reason} tabIndex={0}>

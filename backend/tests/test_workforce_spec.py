@@ -462,6 +462,23 @@ def test_scores_follow_the_planted_hazard(wf80):
     assert merged["probability"].corr(merged["hazard"], method="spearman") > 0.3
 
 
+def test_every_reason_this_spec_can_give_has_words_on_the_site():
+    """The site words each reason code in Hebrew and English (web/src/labels.ts, REASONS) and
+    shows a code it does not know as is; every code an account can get must be there."""
+    from pulse_specs.workforce_saas.features import REASON_CODES
+
+    labels = Path(__file__).resolve().parents[2] / "web" / "src" / "labels.ts"
+    if not labels.exists():
+        pytest.skip("the site's sources are not here")
+    block = re.search(
+        r"const REASONS: Names = \{(.*?)\n\};", labels.read_text(encoding="utf-8"), re.S
+    )
+    worded = set(re.findall(r"^\s+([a-z0-9_]+):", block.group(1), re.M))
+    codes = {REASON_CODES.get(name, name) for name in SPEC.model_features}
+    assert codes <= worded, sorted(codes - worded)
+    assert len(codes) == 36
+
+
 def test_reasons_explain_the_scores(wf80):
     from pulse_specs.workforce_saas.features import REASON_CODES
 
