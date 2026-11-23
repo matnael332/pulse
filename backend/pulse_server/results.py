@@ -8,9 +8,6 @@ account's monthly revenue is read, see ``scores``).
 
 from __future__ import annotations
 
-import csv
-import json
-import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -19,7 +16,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel
 
-from pulse_server import jobs, scores
+from pulse_server import jobs, view
 from pulse_server.changes import artifacts_of, base_run, compare, nothing, run_ref
 from pulse_server.deps import ActiveCompany, Config, Db, LanguageModel
 from pulse_server.errors import http_error
@@ -29,40 +26,12 @@ from pulse_server.translate import TranslationInvalid, translate
 from pulse_server.uploads import company_run
 
 router = APIRouter(prefix="/api/runs", tags=["results"])
-DOCS = {
-    "model_card": "model_card.md",
-    "evaluation_report": "evaluation_report.md",
-    "data_check": "cleaning_report.md",
-}
-FIGURE = re.compile(r"^[a-z0-9_]+\.png$")
-TEST_METRICS = (
-    "roc_auc",
-    "pr_auc",
-    "precision_at_top10pct",
-    "lift_at_top10pct",
-    "brier",
-    "precision",
-    "recall",
-    "flagged_share",
-    "threshold",
-    "rows",
-)
-TOP_FEATURES = 15
-BINS = 10
-INSIGHTS = ("headline", "key_findings", "recommendations", "data_caveats", "source", "language")
 NO_ANSWER = {  # LlmError codes -> HTTP status
     "llm_unavailable": 503,
     "llm_quota": 503,
     "llm_timeout": 504,
     "llm_failed": 502,
 }
-
-
-def _read_json(path: Path) -> dict:
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
 
 
 def _artifacts(settings, db, company, run_id: str) -> tuple[Run, Path, Path]:
@@ -73,71 +42,10 @@ def _artifacts(settings, db, company, run_id: str) -> tuple[Run, Path, Path]:
     return run, folder.runs / run.id / "artifacts", folder.entity_map
 
 
-def _names(entity_map: Path) -> dict[str, tuple[str, str]]:
-    """pseudonym -> (the customer's own account number, the account's name)."""
-    if not entity_map.exists():
-        return {}
-    with open(entity_map, encoding="utf-8", newline="") as handle:
-        return {r["pseudo_id"]: (r["source_id"], r["name"]) for r in csv.DictReader(handle)}
-
-
 @lru_cache(maxsize=32)  # a dashboard holds two runs: the one shown and its base
 def _business(artifacts: str, entity_map: str, _stamp: tuple) -> dict:
     """The business view's data (cached per run and file times: runs never change)."""
-    art = Path(artifacts)
-    names = _names(Path(entity_map))
-    reasons = {
-        e["account_id"]: e["reasons"] for e in _read_json(art / "reasons.json").get("entities", [])
-    }
-    mrr = scores.scored_mrr(art)
-    accounts = []
-    with open(art / "scores_current.csv", encoding="utf-8", newline="") as handle:
-        for row in csv.DictReader(handle):
-            customer_id, name = names.get(row["account_id"], ("", ""))
-            accounts.append(
-                {
-                    "id": row["account_id"],
-                    "customer_id": customer_id,
-                    "name": name,
-                    "level": row["risk_level"],
-                    "probability": float(row["probability"]),
-                    "rank": int(row["rank"]),
-                    "mrr": mrr.get(row["account_id"]),
-                    "reasons": reasons.get(row["account_id"], []),
-                }
-            )
-    levels = {"high": 0, "elevated": 0, "normal": 0}
-    histogram = [0] * BINS
-    for account in accounts:
-        levels[account["level"]] = levels.get(account["level"], 0) + 1
-        histogram[min(int(account["probability"] * BINS), BINS - 1)] += 1
-    eda = _read_json(art / "eda_summary.json")
-    trend = [
-        {"month": month, "rate": values.get("positive_rate"), "rows": values.get("rows")}
-        for month, values in sorted((eda.get("monthly_positive_rate") or {}).items())
-    ]
-    contract = _read_json(art / "dataset_contract.json")
-    return {
-        "revenue": scores.revenue({a["id"]: a["level"] for a in accounts}, mrr),
-        "accounts": accounts,
-        "distribution": {
-            "levels": levels,
-            "histogram": [
-                {"from": i / BINS, "to": (i + 1) / BINS, "count": n}
-                for i, n in enumerate(histogram)
-            ],
-        },
-        "trend": trend,
-        "key_numbers": eda.get("key_numbers") or [],
-        "insights": _insights(art),
-        "groups": contract.get("data_groups") or {},
-    }
-
-
-def _insights(art: Path) -> dict:
-    """What the language model found, as the screens show it (or the run's general text)."""
-    insights = _read_json(art / "narratives.json").get("insights") or {}
-    return {k: insights.get(k) for k in INSIGHTS}
+    return view.business(Path(artifacts), Path(entity_map))
 
 
 def _stamp(*paths: Path) -> tuple:
@@ -171,18 +79,7 @@ def results(run_id: str, company: ActiveCompany, db: Db, settings: Config) -> di
         "previous": run_ref(base_run(db, settings, company, run)),
         "currency": company.currency,
         **business,
-        "data": {
-            k: report.get(k)
-            for k in (
-                "snapshot_date",
-                "train_start",
-                "windows",
-                "cancellations",
-                "low_confidence",
-                "accounts",
-                "groups_missing",
-            )
-        },
+        "data": view.data_notes(report),
     }
 
 
@@ -214,7 +111,7 @@ def translation(
     """The run's insights in ``language``: as written, kept, or translated now (see translate)."""
     _run_row, art, _ = _artifacts(settings, db, company, run_id)
     try:
-        return translate(_insights(art), body.language, art.parent / "translations", model)
+        return translate(view.insights(art), body.language, art.parent / "translations", model)
     except LlmError as exc:
         raise http_error(NO_ANSWER.get(exc.code, 502), exc.code) from exc
     except TranslationInvalid as exc:
@@ -224,42 +121,14 @@ def translation(
 @router.get("/{run_id}/advanced")
 def advanced(run_id: str, company: ActiveCompany, db: Db, settings: Config) -> dict:
     _run_row, art, _ = _artifacts(settings, db, company, run_id)
-    metrics = _read_json(art / "metrics.json")
-    meta = _read_json(art / "model_meta.json")
-    described = {
-        f["name"]: f.get("description", "")
-        for f in _read_json(art / "feature_spec.json").get("features", [])
-    }
-    candidates = {
-        name: {
-            "description": c.get("description", ""),
-            "test": {k: c.get("test", {}).get(k) for k in TEST_METRICS},
-            "cv": {k: v for k, v in (c.get("cv") or {}).items() if k != "folds"},
-        }
-        for name, c in (metrics.get("candidates") or {}).items()
-    }
-    importance = [
-        {**f, "description": described.get(f["feature"], "")}
-        for f in (metrics.get("permutation_importance") or {}).get("features", [])[:TOP_FEATURES]
-    ]
-    figures = sorted(p.name for p in (art / "figures").glob("*.png") if FIGURE.match(p.name))
-    return {
-        "selected_model": metrics.get("selected_model"),
-        "selection": metrics.get("selection") or {},
-        "split": metrics.get("split") or {},
-        "threshold": meta.get("threshold"),
-        "candidates": candidates,
-        "importance": importance,
-        "figures": figures,
-        "docs": [name for name, file in DOCS.items() if (art / file).exists()],
-    }
+    return view.advanced(art)
 
 
 @router.get("/{run_id}/docs/{name}")
 def doc(run_id: str, name: str, company: ActiveCompany, db: Db, settings: Config):
     _run_row, art, _ = _artifacts(settings, db, company, run_id)
-    path = art / DOCS.get(name, "")
-    if name not in DOCS or not path.is_file():
+    path = art / view.DOCS.get(name, "")
+    if name not in view.DOCS or not path.is_file():
         raise HTTPException(404, "no such document")
     return PlainTextResponse(path.read_text(encoding="utf-8"), media_type="text/markdown")
 
@@ -268,6 +137,6 @@ def doc(run_id: str, name: str, company: ActiveCompany, db: Db, settings: Config
 def figure(run_id: str, name: str, company: ActiveCompany, db: Db, settings: Config):
     _run_row, art, _ = _artifacts(settings, db, company, run_id)
     listed = {p.name for p in (art / "figures").glob("*.png")}
-    if not FIGURE.match(name) or name not in listed:
+    if not view.FIGURE.match(name) or name not in listed:
         raise HTTPException(404, "no such figure")
     return FileResponse(art / "figures" / name, media_type="image/png")

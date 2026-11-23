@@ -207,6 +207,7 @@ backend/
                      folder layout (layout.py)
   pulse_server/      the site's backend (FastAPI): Google/Microsoft sign-in, sessions, companies
                      and the operator's approval; SQLAlchemy + Alembic (Postgres, SQLite locally)
+  pulse_demo/        the public demo: the same steps without a server, run in the visitor's browser
   tests/             tests + toy_spec.py (the synthetic DatasetSpec they run on)
 frontend/            Streamlit dashboard (reads artifacts/ only): copilot, model, contract, runs
 web/                 the site (Vite, React, TypeScript, Mantine): pages, he/en dictionaries, theme

@@ -103,6 +103,7 @@ def train_and_evaluate(
     out_dir: str | Path,
     seed: int,
     n_splits: int = 3,
+    figures: bool = True,
 ) -> dict:
     out_dir = Path(out_dir)
     spec, contract = read_json(spec_json), read_json(contract_json)
@@ -190,8 +191,10 @@ def train_and_evaluate(
         }
         for name in windows
     }
-    figures = make_model_figures(
-        y_test, test_proba, chosen, importances, results, out_dir / "figures"
+    drawn = (
+        make_model_figures(y_test, test_proba, chosen, importances, results, out_dir / "figures")
+        if figures
+        else []
     )
     metrics = {
         "selected_model": chosen,
@@ -206,7 +209,7 @@ def train_and_evaluate(
             "repeats": IMPORTANCE_REPEATS,
             "features": importances,
         },
-        "figures": figures,
+        "figures": drawn,
     }
     write_json_lf(out_dir / "metrics.json", metrics)
     final = fitted[chosen].named_steps["model"]

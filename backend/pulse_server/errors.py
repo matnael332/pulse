@@ -6,11 +6,14 @@ company.
 from __future__ import annotations
 
 import zipfile
+from typing import TYPE_CHECKING
 
-from fastapi import HTTPException
 from pandas.errors import EmptyDataError, ParserError
 
 from pulse_ingest.refusal import Refused
+
+if TYPE_CHECKING:
+    from fastapi import HTTPException
 
 # An export the readers cannot parse: the customer's file, not our bug.
 UNREADABLE = (ParserError, EmptyDataError, UnicodeDecodeError, zipfile.BadZipFile)
@@ -35,4 +38,6 @@ def refusal(exc: BaseException) -> tuple[str, dict]:
 
 
 def http_error(http_status: int, code: str, /, **params) -> HTTPException:
+    from fastapi import HTTPException  # here: the steps run without a server too (the demo)
+
     return HTTPException(http_status, {"code": code, "params": params})

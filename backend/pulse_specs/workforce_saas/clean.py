@@ -90,7 +90,8 @@ def build_spine(accounts: pd.DataFrame, snapshot: pd.Timestamp) -> pd.DataFrame:
     start = _period(acc["signed_up_at"])
     end = _period(acc["cancelled_at"].fillna(snapshot - pd.Timedelta(seconds=1)))
     months = (end.dt.year * 12 + end.dt.month) - (start.dt.year * 12 + start.dt.month) + 1
-    months = months.clip(lower=1).to_numpy()
+    # repeat counts in the platform's own index type: a 32-bit build (the browser) refuses int64
+    months = months.clip(lower=1).to_numpy(dtype=np.intp)
     offset = np.arange(months.sum()) - np.repeat(np.cumsum(months) - months, months)
     spine = acc.loc[acc.index.repeat(months)].reset_index(drop=True)
     spine["industry"] = spine["industry"].str.strip().str.lower()

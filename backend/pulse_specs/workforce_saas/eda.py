@@ -4,15 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import matplotlib
+import numpy as np
+import pandas as pd
 
-matplotlib.use("Agg")
-
-import numpy as np  # noqa: E402
-import pandas as pd  # noqa: E402
-from matplotlib.figure import Figure  # noqa: E402
-
-from pulse_specs.workforce_saas import columns as wf  # noqa: E402
+from pulse_core.plotting import figure_class
+from pulse_specs.workforce_saas import columns as wf
 
 TENURE_BUCKETS = ((1, 1, "1"), (2, 3, "2-3"), (4, 6, "4-6"), (7, 12, "7-12"), (13, 10**6, "13+"))
 BLUE, RED = "#2563eb", "#dc2626"
@@ -68,6 +64,7 @@ def eda_summary(tables: dict[str, pd.DataFrame], clean: pd.DataFrame, report: di
 
 
 def eda_figures(summary: dict, clean: pd.DataFrame, out: Path) -> list[str]:
+    Figure = figure_class()  # noqa: N806 - the class, loaded only to draw
     out.mkdir(parents=True, exist_ok=True)
     names = []
 

@@ -3,19 +3,16 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-import matplotlib
+import numpy as np
+from sklearn.calibration import calibration_curve
+from sklearn.metrics import precision_recall_curve, roc_curve
 
-matplotlib.use("Agg")
+from pulse_core.plotting import figure_class
 
-import numpy as np  # noqa: E402
-import seaborn as sns  # noqa: E402
-from matplotlib.figure import Figure  # noqa: E402
-from sklearn.calibration import calibration_curve  # noqa: E402
-from sklearn.metrics import precision_recall_curve, roc_curve  # noqa: E402
-
-# Same theme as the EDA figures, set here too so these figures never depend on import order.
-sns.set_theme(style="whitegrid", context="notebook")
+if TYPE_CHECKING:
+    from matplotlib.figure import Figure
 
 DPI = 110
 COLORS = {
@@ -39,6 +36,7 @@ def make_model_figures(
     results: dict,
     out: str | Path,
 ) -> list[str]:
+    Figure = figure_class()  # noqa: N806 - the class, loaded only to draw
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     names = []
