@@ -16,7 +16,7 @@ import {
 } from "../api";
 import { ErrorNotice } from "../components/ErrorNotice";
 import { useI18n } from "../i18n";
-import { Orbit } from "../landing/Orbit";
+import { band, beside, Orbit } from "../landing/Orbit";
 import type { Geometry } from "../landing/sky";
 import { AtRiskTable } from "./AtRiskTable";
 import { ChangesPanel, useChanges } from "./ChangesView";
@@ -24,23 +24,25 @@ import { RiskHistogram, TrendChart } from "./Charts";
 import classes from "./Dashboard.module.css";
 import { Counts, type Facts, Revenue } from "./Kpis";
 import { latestRate } from "./figures";
+import { useNamed } from "./named";
 import { DataNotes, Findings, TopReasons } from "./Words";
 
 /** The sky across the panel, the planet on the far side from the figure; on a phone, above it. */
 function wide(width: number, height: number, rtl: boolean): Geometry {
-  if (width < 700) {
-    return { cx: width * 0.5, cy: height * 0.5, radius: Math.min(height * 0.42, width * 0.2) };
-  }
+  if (width < 700) return band(width, height);
   return {
     cx: width * (rtl ? 0.26 : 0.74),
     cy: height * 0.5,
     radius: Math.min(height * 0.62, width * 0.17),
+    spots: beside(rtl),
   };
 }
 
-/** What is at stake: the company's accounts as a sky, the revenue at risk, the counts. */
+/** What is at stake: the company's accounts as a sky, the ones most likely to leave named, the
+ * revenue at risk and the counts. */
 function Hero({ results, facts }: { results: Results; facts: Facts }) {
   const { lang } = useI18n();
+  const named = useNamed(results.accounts, facts.currency);
   return (
     <section className={`${classes.panel} ${classes.hero}`}>
       <div className={classes.heroSky}>
@@ -50,6 +52,7 @@ function Hero({ results, facts }: { results: Results; facts: Facts }) {
           rtl={lang === "he"}
           layout={wide}
           result={{ accounts: facts.summary.accounts, risk: facts.summary.high }}
+          named={named}
         />
         <dl className={`${classes.over} ${classes.answerBox}`}>
           <Revenue facts={facts} />

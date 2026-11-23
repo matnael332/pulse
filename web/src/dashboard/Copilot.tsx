@@ -216,7 +216,7 @@ export function FloatingCopilot({ runId }: { runId: string }) {
         <Button
           ref={button}
           radius="xl"
-          leftSection={<IconMessageCircle size={18} />}
+          leftSection={<IconMessageCircle size={16} stroke={1.5} />}
           aria-expanded={open}
           aria-controls="copilot-window"
           onClick={() => (open ? close() : setOpen(true))}

@@ -65,7 +65,7 @@ export function MappingReview({
   return (
     <Stack gap="lg">
       <Stack gap="xs">
-        <Title order={2} fz={26}>
+        <Title order={2} fz={24}>
           {t("review.title")}
         </Title>
         <Text c="dimmed" size="lg">

@@ -44,7 +44,9 @@ describe("the landing page", () => {
       "false",
     );
     expect(within(screen.getByRole("article")).getByText(en("landing.why.none"))).toBeVisible();
-    expect(screen.getByText(en("landing.why.sample"))).toBeInTheDocument();
+    // the samples are said to be samples: beside the sky that names them, and under the list
+    expect(screen.getAllByText(en("landing.why.sample"))).toHaveLength(2);
+    expect(screen.getByText(en("sky.month", { amount: "₪1,200" }))).toBeInTheDocument();
   });
 
   it("offers the dev login only where the server has it", async () => {

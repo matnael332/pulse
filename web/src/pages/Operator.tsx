@@ -62,11 +62,10 @@ export function Operator() {
   return (
     <Stack gap="xl" maw={1080} mx="auto" pt="xl">
       <Group justify="space-between" align="flex-end">
-        <Title order={1} fz={40}>
+        <Title order={1} fz={32}>
           {t("operator.title")}
         </Title>
         <SegmentedControl
-          radius="xl"
           value={status}
           onChange={(value) => setStatus(value as CompanyStatus)}
           data={STATUSES.map((value) => ({ value, label: t(`operator.${value}`) }))}

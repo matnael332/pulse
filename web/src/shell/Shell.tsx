@@ -29,7 +29,9 @@ export function Shell() {
       <AppShell.Header className={classes.bar}>
         <Group gap="sm" wrap="nowrap">
           <Logo size={26} />
-          <Wordmark />
+          <span className={classes.word}>
+            <Wordmark />
+          </span>
         </Group>
         <nav className={classes.nav}>
           {me?.state === "operator" ? (
@@ -70,7 +72,10 @@ export function Shell() {
               </Menu.Target>
               <Menu.Dropdown>
                 <Menu.Label>{me.user.email}</Menu.Label>
-                <Menu.Item leftSection={<IconLogout size={16} />} onClick={() => void signOut()}>
+                <Menu.Item
+                  leftSection={<IconLogout size={16} stroke={1.5} />}
+                  onClick={() => void signOut()}
+                >
                   {t("common.signOut")}
                 </Menu.Item>
               </Menu.Dropdown>
@@ -79,7 +84,7 @@ export function Shell() {
         </Group>
       </AppShell.Header>
       <AppShell.Main>
-        <Container size="xl">
+        <Container size="xl" px={{ base: 0, sm: "md" }}>
           <Outlet />
         </Container>
       </AppShell.Main>

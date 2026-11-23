@@ -44,7 +44,7 @@ export function Footer() {
             {t("landing.nav.start")}
           </a>
         </div>
-        <span>{t("landing.footer.rights")}</span>
+        <span dir="ltr">{t("landing.footer.rights")}</span>
       </div>
     </footer>
   );

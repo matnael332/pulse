@@ -53,14 +53,13 @@ export function Data({ view }: { view: DataView }) {
           </h1>
           <p className={classes.lead}>{t("data.lead")}</p>
         </div>
-        {latest?.finished_at && (
-          <p className={classes.clock}>
-            {t("home.latest")}
-            <b>
-              {new Intl.DateTimeFormat(locale, { dateStyle: "short" }).format(
-                new Date(latest.finished_at),
-              )}
-            </b>
+        {/* the start has the latest result's own panel, with its date */}
+        {view.kind !== "start" && latest?.finished_at && (
+          <p className={classes.stamp}>
+            {t("home.latest")}:{" "}
+            {new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
+              new Date(latest.finished_at),
+            )}
           </p>
         )}
       </header>

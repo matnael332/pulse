@@ -20,6 +20,7 @@ import { label } from "../labels";
 import { GROUPS, shown } from "./changes";
 import classes from "./Dashboard.module.css";
 import { day } from "./deltas";
+import { Level } from "./Level";
 
 const TITLE: Record<ChangeGroup, Key> = {
   entered_high: "changes.enteredHigh",
@@ -69,16 +70,6 @@ function Before({ account }: { account: AccountChange }) {
       {account.level_before
         ? t("changes.from", { value: label.risk(account.level_before, lang) })
         : t("changes.new")}
-    </span>
-  );
-}
-
-function Level({ level }: { level: AccountChange["level"] }) {
-  const { lang } = useI18n();
-  if (!level) return <span className={classes.muted}>—</span>;
-  return (
-    <span className={classes.level} data-level={level}>
-      {label.risk(level, lang)}
     </span>
   );
 }

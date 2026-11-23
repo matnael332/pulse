@@ -53,6 +53,7 @@ export default function ModelView({ runId, runs }: { runId: string; runs: RunInf
   const selected = advanced.selected_model ? advanced.candidates[advanced.selected_model] : null;
   const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
   const count = new Intl.NumberFormat(locale);
+  const most = Math.max(...advanced.importance.map((f) => f.importance_mean));
 
   return (
     <div className={classes.stack}>
@@ -102,12 +103,12 @@ export default function ModelView({ runId, runs }: { runId: string; runs: RunInf
                 {Object.entries(advanced.candidates).map(([name, candidate]) => (
                   <Table.Tr key={name}>
                     <Table.Td>
-                      <span className={classes.code} dir="ltr">
-                        {name}
+                      <span className={classes.code}>
+                        <bdi dir="ltr">{name}</bdi>
+                        {name === advanced.selected_model && (
+                          <span className={classes.tag}>{t("advanced.selected")}</span>
+                        )}
                       </span>
-                      {name === advanced.selected_model && (
-                        <span className={classes.tag}>{t("advanced.selected")}</span>
-                      )}
                     </Table.Td>
                     {METRICS.map((m) => (
                       <Table.Td key={m} className={classes.num}>
@@ -169,7 +170,8 @@ export default function ModelView({ runId, runs }: { runId: string; runs: RunInf
                 feature: f.feature,
                 importance: f.importance_mean,
               }))}
-              series={[{ name: "importance", label: t("advanced.importance"), color: "ink.0" }]}
+              series={[{ name: "importance", label: t("advanced.importance"), color: "ink.5" }]}
+              getBarColor={(value) => (value === most ? "ink.0" : "ink.5")}
               gridAxis="y"
               tickLine="none"
               gridColor="#1f1f1f"
@@ -188,7 +190,6 @@ export default function ModelView({ runId, runs }: { runId: string; runs: RunInf
               {t("advanced.docs")}
             </h2>
             <SegmentedControl
-              radius="xl"
               value={doc}
               onChange={setDoc}
               data={advanced.docs.map((d) => ({ value: d, label: t(`advanced.${d}` as Key) }))}

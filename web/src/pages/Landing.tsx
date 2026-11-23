@@ -13,12 +13,13 @@ import classes from "../landing/Landing.module.css";
 import { Orbit } from "../landing/Orbit";
 import { Privacy } from "../landing/Privacy";
 import { order, useReveal } from "../landing/reveal";
+import { pick, SAMPLE } from "../landing/sample";
 import { Showcase } from "../landing/Showcase";
 import { SignIn } from "../landing/SignIn";
 import { Stages } from "../landing/Stages";
 
 export function Landing() {
-  const { t, lang, setLang } = useI18n();
+  const { t, lang, locale, setLang } = useI18n();
   const [params] = useSearchParams();
   const [providers, setProviders] = useState<string[] | null>(null);
   const [error, setError] = useState(params.get("error") ? t("login.failed") : "");
@@ -31,6 +32,18 @@ export function Landing() {
       .then((answer) => setProviders(answer.providers))
       .catch(() => setProviders([]));
   }, []);
+
+  // the sample customers at high risk, named in the sky as the dashboard names real ones
+  const shekels = new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: "ILS",
+    maximumFractionDigits: 0,
+  });
+  const named = SAMPLE.filter((a) => a.level === "high").map((a) => ({
+    id: a.id,
+    name: pick(a.name, lang),
+    note: t("sky.month", { amount: shekels.format(a.mrr) }),
+  }));
 
   return (
     <div className={classes.page} ref={root} data-paused={paused || undefined}>
@@ -60,7 +73,8 @@ export function Landing() {
       </header>
       <main id="main">
         <section className={classes.hero} aria-labelledby="landing-title">
-          <Orbit className={classes.orbit} rtl={lang === "he"} paused={paused} />
+          <Orbit className={classes.orbit} rtl={lang === "he"} paused={paused} named={named} />
+          <p className={classes.skyNote}>{t("landing.why.sample")}</p>
           <button
             type="button"
             className={classes.motion}

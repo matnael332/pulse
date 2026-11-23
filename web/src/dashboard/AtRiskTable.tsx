@@ -9,6 +9,7 @@ import { type Lang, useI18n } from "../i18n";
 import { label } from "../labels";
 import { download, riskCsv } from "./csv";
 import classes from "./Dashboard.module.css";
+import { Level } from "./Level";
 
 const PAGE = 50;
 type Filter = "all" | ScoredAccount["level"];
@@ -73,7 +74,7 @@ export function AtRiskTable({ results, currency }: { results: Results; currency:
         </h2>
         <Button
           variant="default"
-          leftSection={<IconDownload size={16} />}
+          leftSection={<IconDownload size={16} stroke={1.5} />}
           onClick={exportCsv}
           size="compact-md"
         >
@@ -82,7 +83,6 @@ export function AtRiskTable({ results, currency }: { results: Results; currency:
       </div>
       <div className={classes.tools}>
         <SegmentedControl
-          radius="xl"
           value={filter}
           onChange={(value) => {
             setFilter(value as Filter);
@@ -98,8 +98,8 @@ export function AtRiskTable({ results, currency }: { results: Results; currency:
         <TextInput
           w={280}
           size="sm"
-          leftSection={<IconSearch size={16} />}
-          placeholder={t("results.search")}
+          leftSection={<IconSearch size={16} stroke={1.5} />}
+          placeholder={t("results.searchShort")}
           aria-label={t("results.search")}
           type="search"
           name="q"
@@ -138,9 +138,7 @@ export function AtRiskTable({ results, currency }: { results: Results; currency:
                     )}
                   </Table.Td>
                   <Table.Td>
-                    <span className={classes.level} data-level={a.level}>
-                      {label.risk(a.level, lang)}
-                    </span>
+                    <Level level={a.level} />
                   </Table.Td>
                   <Table.Td className={classes.num}>{percent.format(a.probability)}</Table.Td>
                   <Table.Td className={classes.num}>

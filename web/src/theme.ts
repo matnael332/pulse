@@ -3,11 +3,13 @@
 // Two faces (fonts.ts): Noto Sans Hebrew for text in both languages, Barlow Condensed for display
 // type and figures, falling back to Noto's narrow width for Hebrew titles.
 import {
+  Badge,
   Button,
   Card,
   createTheme,
   Modal,
   Paper,
+  SegmentedControl,
   TextInput,
   type CSSVariablesResolver,
   type MantineColorsTuple,
@@ -77,10 +79,16 @@ export const theme = createTheme({
   defaultRadius: "sm",
   radius: { xs: "4px", sm: "6px", md: "6px", lg: "6px", xl: "999px" },
   cursorType: "pointer",
+  // the corners: a pill is something to press, a field or a panel is 6px, a tag inside one 4px
   components: {
+    Badge: Badge.extend({ defaultProps: { radius: "xs" } }),
     Button: Button.extend({ defaultProps: { radius: "xl", size: "md" } }),
     Card: Card.extend({ defaultProps: { radius: "sm", padding: "xl", bg: "dark.6" } }),
     Paper: Paper.extend({ defaultProps: { radius: "sm" } }),
+    SegmentedControl: SegmentedControl.extend({
+      defaultProps: { radius: "sm" },
+      styles: { indicator: { borderRadius: 4 }, label: { borderRadius: 4 } }, // 6 less its padding
+    }),
     TextInput: TextInput.extend({ defaultProps: { size: "md" } }),
     Modal: Modal.extend({ defaultProps: { radius: "sm", centered: true, padding: "xl" } }),
   },

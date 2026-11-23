@@ -10,7 +10,7 @@
   --s4: 20px;
   --s5: 16px;
   --gap: clamp(120px, 14vw, 200px);
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out: var(--pulse-ease);
   --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
   background: var(--pulse-ground);
   color: var(--pulse-ink);
@@ -69,7 +69,7 @@
   touch-action: manipulation;
   text-decoration: underline;
   text-underline-offset: 4px;
-  transition: color 180ms ease;
+  transition: color 180ms var(--ease-out);
 }
 
 .motion:hover {
@@ -107,7 +107,7 @@
 .navLink {
   color: var(--pulse-muted);
   text-decoration: none;
-  transition: color 180ms ease;
+  transition: color 180ms var(--ease-out);
 }
 
 .navLink:hover {
@@ -123,7 +123,7 @@
   padding: 6px 14px;
   cursor: pointer;
   transition:
-    border-color 180ms ease,
+    border-color 180ms var(--ease-out),
     transform 140ms var(--ease-out);
 }
 
@@ -154,6 +154,67 @@
   inset: 0;
   width: 100%;
   height: 100%;
+}
+
+/* the words stand on empty sky: it fades out towards them, and under the bar on top */
+.hero .sky {
+  --towards: to right;
+  mask-image:
+    linear-gradient(var(--towards), transparent 40%, #000 58%),
+    linear-gradient(transparent 56px, #000 128px);
+  mask-composite: intersect;
+}
+
+:global([dir="rtl"]) .hero .sky {
+  --towards: to left;
+}
+
+/* a customer the sky names, beside its point */
+.named {
+  position: absolute;
+  inset: 0 auto auto 0; /* the point's own pixels: never mirrored */
+  display: grid;
+  width: max-content; /* at most the room fitNames gives it */
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--pulse-soft);
+  pointer-events: none;
+}
+
+.named[hidden] {
+  display: none;
+}
+
+.named[data-side="left"] {
+  justify-items: right;
+}
+
+.named[data-side="right"] {
+  justify-items: left;
+}
+
+.named[data-side="above"],
+.named[data-side="below"] {
+  justify-items: center;
+}
+
+.namedName {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--pulse-ink);
+}
+
+/* the names in the landing page's sky are invented, and said to be */
+.skyNote {
+  position: absolute;
+  z-index: 2;
+  inset-inline-end: var(--m);
+  bottom: 64px;
+  margin: 0;
+  color: var(--pulse-muted);
 }
 
 .planet {
@@ -218,8 +279,8 @@
   cursor: pointer;
   touch-action: manipulation;
   transition:
-    background-color 180ms ease,
-    color 180ms ease,
+    background-color 180ms var(--ease-out),
+    color 180ms var(--ease-out),
     transform 140ms var(--ease-out);
 }
 
@@ -301,17 +362,18 @@
   transform-origin: right center;
 }
 
+/* the tones build up to white, the list itself; red is kept for risk */
 .segment:nth-child(1) .fill {
-  background: #ffffff;
+  background: #949494;
 }
 .segment:nth-child(2) .fill {
-  background: #e0e0e0;
-}
-.segment:nth-child(3) .fill {
   background: #b4b4b4;
 }
+.segment:nth-child(3) .fill {
+  background: #e0e0e0;
+}
 .segment:nth-child(4) .fill {
-  background: var(--pulse-red);
+  background: #ffffff;
 }
 
 .segmentInner {
@@ -486,10 +548,13 @@
   padding: 14px 0;
   cursor: pointer;
   touch-action: manipulation;
-  transition: color 180ms ease;
+  transition: color 180ms var(--ease-out);
 }
 
 .nameText {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
   font-family: var(--pulse-font-display);
   font-weight: 600;
   font-stretch: 72%;
@@ -506,17 +571,6 @@
 .name:hover,
 .name[aria-pressed="true"] {
   color: var(--pulse-ink);
-}
-
-.name[aria-pressed="true"] .nameText::before {
-  content: "";
-  display: inline-block;
-  width: 0.32em;
-  height: 0.32em;
-  border-radius: 50%;
-  background: currentColor;
-  margin-inline-end: 0.35em;
-  vertical-align: 0.2em;
 }
 
 .caption {
@@ -557,7 +611,7 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .card {
-    animation: cardIn 300ms ease both;
+    animation: cardIn 300ms var(--ease-out) both;
   }
 }
 
@@ -689,8 +743,8 @@
 
 .chip {
   border: 1px solid var(--pulse-outline); /* taste-skill-ignore: inside the data-ui review fragment */
-  border-radius: 999px;
-  padding: 2px 10px;
+  border-radius: 4px;
+  padding: 0 8px;
   color: var(--pulse-muted);
 }
 
@@ -816,6 +870,12 @@
   }
   .navLinks a {
     display: none;
+  }
+  .hero .sky {
+    mask-image: linear-gradient(transparent 62%, #000 78%);
+  }
+  .skyNote {
+    display: none; /* no names in a phone's sky */
   }
   .heroCopy {
     top: 14%;

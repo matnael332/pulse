@@ -9,7 +9,7 @@
   --pulse-muted: #b4b4b4;
   --pulse-soft: #949494;
   --pulse-red: #ff453a;
-  --pulse-red-tint: #2a0e0c;
+  --pulse-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --pulse-font-text:
     "Noto Sans Hebrew Variable", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
   --pulse-font-display: "Barlow Condensed", var(--pulse-font-text);
@@ -34,6 +34,25 @@ h3 {
 .figures {
   font-family: var(--pulse-font-display);
   font-variant-numeric: tabular-nums;
+}
+
+/* The signature: a customer is a point, red when at high risk, white when elevated. The same point
+   in the sky, in the tables, in the legends and on the landing page. */
+.point {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pulse-soft);
+}
+
+.point[data-level="high"] {
+  background: var(--pulse-red);
+}
+
+.point[data-level="elevated"] {
+  background: var(--pulse-ink);
 }
 
 .hairline {
