@@ -83,6 +83,28 @@ describe("the data page", () => {
     );
   });
 
+  it("names the likeliest to leave in the latest result's sky", async () => {
+    const summary = { accounts: 1, high: 1, elevated: 0, normal: 0, snapshot_date: "2025-09-01" };
+    const account = {
+      id: "acc_000001",
+      customer_id: "10001",
+      name: "Galil Bakery",
+      level: "high",
+      probability: 0.9,
+      rank: 1,
+      mrr: 1200,
+      reasons: [],
+    };
+    serve({
+      "GET /api/me": { body: ACTIVE },
+      "GET /api/company": { body: company({ latest_run: run("succeeded", { summary }) }) },
+      "GET /api/runs/run1/results": { body: { accounts: [account] } },
+    });
+    renderAt("/data", "en");
+    expect(await screen.findByText("Galil Bakery")).toBeInTheDocument();
+    expect(screen.getByText(en("sky.month", { amount: "₪1,200" }))).toBeInTheDocument();
+  });
+
   it("changes the currency of the revenue figures", async () => {
     const calls = serve({
       "GET /api/me": { body: ACTIVE },

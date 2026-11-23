@@ -24,7 +24,6 @@ export function CurrencyPicker({
         value={value}
         onChange={(chosen) => onChange(chosen as Currency)}
         disabled={disabled}
-        radius="xl"
         data={CURRENCIES.map((c) => ({ value: c, label: t(`currency.${c}`) }))}
       />
       <p className={classes.hint}>{t("currency.hint")}</p>

@@ -1,8 +1,9 @@
 // The sky: customers in orbit. Points of light circle a centre on tilted ellipses. On the landing
 // page, every few seconds one drifts off its orbit, turns red and leaves, and a new one fades in, so
 // the count stays the same. A result's sky is different: one point per scored account, the ones at
-// high risk red on the outer ring, and nobody leaves. Pure: the canvas (Orbit.tsx) only draws what
-// this computes, and the tests drive it with a seed.
+// high risk red on the outer ring, and nobody leaves. A few of the red points carry a customer's
+// name: those hold their place (a spot the layout chooses, clear of the text) and only sway.
+// Pure: the canvas (Orbit.tsx) only draws what this computes, and the tests drive it with a seed.
 
 export const RINGS = 4;
 const RED_AFTER = 1.6; // seconds of drift to turn fully red
@@ -19,6 +20,16 @@ export interface Satellite {
   out: number; // how far it has drifted, in ring widths
   alpha: number;
   risk: boolean; // an account at high risk: red, on the outer ring
+  home: number | null; // a named point's angle: it sways about it instead of circling
+  sway: number; // radians, how far into its sway
+}
+
+/** Where a named point stands, and the side of it its name is written on. */
+export interface Spot {
+  ring: number;
+  angle: number;
+  side: "left" | "right" | "above" | "below";
+  lift?: number; // beside the point: how much of the name stands over it (0 under, 1 over)
 }
 
 export interface Orbit {
@@ -37,6 +48,8 @@ export interface Geometry {
   cx: number;
   cy: number;
   radius: number;
+  spots?: Spot[]; // for the named points, the first ones first
+  clear?: (x: number, y: number) => boolean; // away from the text (everywhere, when not given)
 }
 
 export interface Placed {
@@ -72,6 +85,8 @@ function satellite(random: () => number, visible: boolean, risk = false): Satell
     out: 0,
     alpha: visible ? 1 : 0,
     risk,
+    home: null,
+    sway: 0,
   };
 }
 
@@ -82,16 +97,33 @@ export function createOrbit(count: number, seed = 7, options: SkyOptions = {}): 
   return { satellites, nextDrift: 1.5, random, leaving: options.leaving ?? true };
 }
 
-/** Advance by dt seconds (clamped, so a tab that comes back does not jump). */
-export function step(orbit: Orbit, dt: number): void {
+/** The first points at high risk take the layout's spots, and hold them. */
+export function pin(orbit: Orbit, spots: Spot[]): void {
+  orbit.satellites.forEach((s, i) => {
+    const spot = s.risk ? spots[i] : undefined;
+    s.home = spot ? spot.angle : null;
+    if (spot) Object.assign(s, { ring: spot.ring, angle: spot.angle, size: 3, sway: i * 2 });
+  });
+}
+
+/** Advance by dt seconds (clamped, so a tab that comes back does not jump). The one that leaves is
+ * one the visitor can see: `seen` says which are clear of the text. */
+export function step(orbit: Orbit, dt: number, seen: (s: Satellite) => boolean = () => true): void {
   const d = Math.min(Math.max(dt, 0), 0.05);
   orbit.nextDrift -= d;
   if (orbit.leaving && orbit.nextDrift <= 0) {
-    const leaving = orbit.satellites.find((s) => !s.drifting && !s.risk && s.alpha === 1);
+    const leaving = orbit.satellites.find(
+      (s) => !s.drifting && !s.risk && s.alpha === 1 && seen(s),
+    );
     if (leaving) leaving.drifting = true;
     orbit.nextDrift = 4 + orbit.random() * 3;
   }
   orbit.satellites.forEach((s, i) => {
+    if (s.home !== null) {
+      s.sway += d * 0.4;
+      s.angle = s.home + Math.sin(s.sway) * 0.04;
+      return;
+    }
     s.angle += s.speed * d;
     if (!s.drifting) {
       s.alpha = Math.min(1, s.alpha + d * 0.6);
@@ -102,14 +134,6 @@ export function step(orbit: Orbit, dt: number): void {
     if (s.t > FADE_AFTER) s.alpha -= d * 0.7;
     if (s.alpha <= 0) orbit.satellites[i] = satellite(orbit.random, false);
   });
-}
-
-/** One frame for a still page (reduced motion): one satellite caught halfway out, in red. */
-export function still(count: number, seed = 7): Orbit {
-  const orbit = createOrbit(count, seed);
-  const leaving = orbit.satellites[0];
-  Object.assign(leaving, { drifting: true, t: RED_AFTER, out: 0.9 });
-  return orbit;
 }
 
 /** The radii of a ring, before the tilt. */

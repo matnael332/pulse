@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { Advanced, Changes, Results, RunInfo, RunSummary } from "./api";
 import { riskCsv } from "./dashboard/csv";
+import { atRisk } from "./dashboard/named";
 import { label } from "./labels";
 import { en, he, me, renderAt, serve } from "./test-utils";
 
@@ -190,7 +191,7 @@ const shekels = (value: number, sign = false) =>
     .replace(/\s+/g, " "); // as the queries read it
 
 describe("the overview", () => {
-  it("leads with the revenue at risk, the counts, and a dash with nothing to compare", async () => {
+  it("leads with the revenue at risk and the counts, and says so with nothing to compare", async () => {
     serve(routes());
     renderAt("/dashboard/run1");
     expect(await screen.findByText(shekels(2400, false), { selector: "dd" }, LAZY)).toBeVisible();
@@ -199,8 +200,7 @@ describe("the overview", () => {
       he("dashboard.title", { name: "Acme" }),
     );
     expect(screen.getByText(he("dashboard.lead", { high: "1", accounts: "3" }))).toBeVisible();
-    // four figures compared with nothing: four dashes
-    expect(screen.getAllByText(he("dashboard.noCompare"))).toHaveLength(4);
+    expect(screen.getByText(he("dashboard.noCompare"))).toBeVisible(); // once, under the answer
     // the newest month that has a rate (July has none yet)
     expect(screen.getByText(he("dashboard.rate", { month: "יוני 2025" }))).toBeInTheDocument();
     expect(screen.getByText("5.0%")).toBeInTheDocument();
@@ -225,12 +225,38 @@ describe("the overview", () => {
     });
     renderAt("/dashboard/run1");
     const vs = he("dashboard.vs", { date: medium("2025-08-01") }); // the month of data, not the run
-    expect((await screen.findAllByText(new RegExp(vs), {}, LAZY)).length).toBe(4);
+    expect((await screen.findAllByText(new RegExp(vs), {}, LAZY)).length).toBe(3);
     const signed = new Intl.NumberFormat("he-IL", { signDisplay: "exceptZero" });
     expect(screen.getByText(signed.format(1)).className).toMatch(/bad/); // more at high risk
     expect(screen.getByText(signed.format(-1)).className).not.toMatch(/bad/); // fewer accounts
     expect(screen.getByText(shekels(1400, true)).className).toMatch(/bad/);
-    expect(screen.getByText("0").className).not.toMatch(/bad/); // elevated, unchanged
+    expect(screen.getByText(he("dashboard.same"))).toBeVisible(); // elevated, unchanged
+    expect(screen.queryByText(he("dashboard.noCompare"))).not.toBeInTheDocument();
+  });
+
+  it("names the accounts most likely to leave in the sky, with what they pay", async () => {
+    const many = [0.95, 0.99, 0.6, 0.8].map((probability, i) => ({
+      ...RESULTS.accounts[0],
+      id: `acc_00010${i}`,
+      name: `לקוח ${i}`,
+      mrr: i === 1 ? null : 100,
+      probability,
+    }));
+    expect(atRisk([...many, RESULTS.accounts[1]]).map((a) => a.name)).toEqual([
+      "לקוח 1",
+      "לקוח 0",
+      "לקוח 3",
+    ]);
+    serve({
+      ...routes(),
+      "GET /api/runs/run1/results": { body: { ...RESULTS, accounts: many } },
+    });
+    const { container } = renderAt("/dashboard/run1");
+    await screen.findByRole("table", {}, LAZY);
+    const sky = [...container.querySelectorAll("[aria-hidden] bdi")].map((e) => e.textContent);
+    expect(sky).toEqual(["לקוח 1", "לקוח 0", "לקוח 3"]);
+    expect(screen.getByText("99%")).toBeInTheDocument(); // its revenue is not known
+    expect(screen.getAllByText(he("sky.month", { amount: shekels(100) }))).toHaveLength(2);
   });
 
   it("lists the accounts at risk with their revenue and reasons", async () => {

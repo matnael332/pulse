@@ -34,7 +34,11 @@ export function TopReasons({ results }: { results: Results }) {
                 <span>{label.reason(r.code, lang)}</span>
                 <span className={classes.num}>{count.format(r.count)}</span>
               </div>
-              <div className={classes.track} style={{ width: `${(r.count / most) * 88}%` }} />
+              <div
+                className={classes.track}
+                data-most={r.count === most || undefined}
+                style={{ width: `${(r.count / most) * 100}%` }}
+              />
             </li>
           ))}
         </ol>

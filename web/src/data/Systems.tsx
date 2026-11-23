@@ -1,7 +1,5 @@
 // Connecting systems directly, instead of a file: coming in version 2. Each row names the system
 // and the data it would bring (the product's own group names); none can be connected yet.
-import { Button } from "@mantine/core";
-
 import { useI18n, type Key } from "../i18n";
 import { label } from "../labels";
 import classes from "./Data.module.css";
@@ -28,12 +26,7 @@ export function Systems() {
             <tr key={key}>
               <td className={classes.systemName}>{t(`systems.${key}` as Key)}</td>
               <td className={classes.muted}>{data(lang)}</td>
-              <td>
-                <span className={classes.soon}>{t("systems.soon")}</span>
-                <Button variant="default" size="compact-md" disabled>
-                  {t("systems.connect")}
-                </Button>
-              </td>
+              <td className={classes.muted}>{t("systems.soon")}</td>
             </tr>
           ))}
         </tbody>

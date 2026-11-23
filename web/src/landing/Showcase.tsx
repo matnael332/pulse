@@ -39,7 +39,10 @@ export function Showcase() {
                 aria-pressed={a.id === chosen}
                 onClick={() => setChosen(a.id)}
               >
-                <span className={classes.nameText}>{pick(a.name, lang)}</span>
+                <span className={classes.nameText}>
+                  <span className="point" data-level={a.level} aria-hidden="true" />
+                  <bdi>{pick(a.name, lang)}</bdi>
+                </span>
                 <span className={`figures ${a.level === "high" ? classes.high : ""}`}>
                   {percent.format(a.probability)}
                 </span>

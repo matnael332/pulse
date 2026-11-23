@@ -23,7 +23,7 @@ export function ErrorNotice({
       variant="light"
       radius="md"
       title={title}
-      icon={<IconAlertTriangle size={20} />}
+      icon={<IconAlertTriangle size={16} stroke={1.5} />}
     >
       {problemText(problem ?? { code: "internal", params: {} }, lang)}
       {children}

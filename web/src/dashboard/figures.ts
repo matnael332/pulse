@@ -28,6 +28,13 @@ export function topReasons(accounts: ScoredAccount[], limit = 6) {
     .slice(0, limit);
 }
 
+/** Round marks for a count's axis: 0 up to the first one at or over `most`, at most five. */
+export function ticks(most: number): number[] {
+  const steps = [1, 10, 100, 1000, 10_000].flatMap((n) => [n, 2 * n, 5 * n]);
+  const step = steps.find((n) => most / n <= 4) ?? Math.ceil(most / 4);
+  return Array.from({ length: Math.max(1, Math.ceil(most / step)) + 1 }, (_, i) => i * step);
+}
+
 /** Accounts per tenth of probability, the ones at high risk apart from the others. */
 export function histogram(accounts: ScoredAccount[]) {
   const bins = Array.from({ length: BINS }, (_, i) => ({

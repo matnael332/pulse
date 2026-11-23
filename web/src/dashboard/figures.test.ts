@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Reason, ScoredAccount } from "../api";
-import { histogram, latestRate, topReasons } from "./figures";
+import { histogram, latestRate, ticks, topReasons } from "./figures";
 
 const why = (code: string): Reason => ({
   code,
@@ -27,6 +27,16 @@ function account(
     reasons: codes.map(why),
   };
 }
+
+describe("a count's axis", () => {
+  it("has round marks up to the largest count, at most five", () => {
+    expect(ticks(36)).toEqual([0, 10, 20, 30, 40]);
+    expect(ticks(3)).toEqual([0, 1, 2, 3]);
+    expect(ticks(0)).toEqual([0, 1]);
+    expect(ticks(1600)).toEqual([0, 500, 1000, 1500, 2000]);
+    expect(ticks(900_000).length).toBeLessThanOrEqual(5);
+  });
+});
 
 describe("the latest rate", () => {
   it("is the newest month that has one", () => {

@@ -10,7 +10,7 @@
   font-family: var(--pulse-font-display);
   font-weight: 600;
   font-stretch: 72%;
-  line-height: 1;
+  line-height: 1.2;
   margin: 0;
 }
 
@@ -19,7 +19,7 @@
   justify-content: space-between;
   align-items: flex-end;
   gap: 32px;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
 
 .title {
@@ -27,24 +27,14 @@
 }
 
 .lead {
-  margin: 10px 0 0;
+  margin: 4px 0 0;
   color: var(--pulse-muted);
 }
 
-.clock {
-  text-align: end;
+.stamp {
+  margin: 0;
   color: var(--pulse-soft);
   white-space: nowrap;
-}
-
-.clock b {
-  display: block;
-  font-family: var(--pulse-font-display);
-  font-weight: 600;
-  font-size: 32px;
-  line-height: 1;
-  color: var(--pulse-ink);
-  font-variant-numeric: tabular-nums;
 }
 
 /* ---------------------------------------------------------------------------- the journey */
@@ -66,7 +56,7 @@
   flex-direction: column;
   justify-content: space-between;
   gap: 8px;
-  padding: 12px 14px;
+  padding: 12px 16px;
   background: var(--pulse-raised);
   color: var(--pulse-soft);
 }
@@ -75,8 +65,8 @@
   font-family: var(--pulse-font-display);
   font-weight: 600;
   font-stretch: 72%;
-  font-size: 22px;
-  line-height: 1;
+  font-size: 20px;
+  line-height: 1.2;
 }
 
 .stepSub {
@@ -111,7 +101,7 @@
     width: 38%;
     height: 4px;
     background: var(--pulse-ground);
-    animation: work 2.4s ease-in-out infinite alternate;
+    animation: work 2.4s var(--pulse-ease) infinite alternate;
   }
 }
 
@@ -149,17 +139,18 @@
   overflow: hidden;
   background: var(--pulse-surface);
   border-radius: 6px;
-  padding: 28px;
+  padding: 24px;
 }
 
 .panelTitle {
-  font-size: 26px;
-  margin-bottom: 8px;
+  font-size: 24px;
+  margin-bottom: 4px;
 }
 
 .panelLead {
   margin: 0 0 20px;
   color: var(--pulse-muted);
+  text-wrap: pretty;
 }
 
 /* a step: the words on the start side, the sky on the far side (StepPanel) */
@@ -181,24 +172,25 @@
   align-items: center;
 }
 
-/* the drop target is a planet: the file goes into orbit */
+/* the drop target is a planet: the file goes into orbit (the ring stays inside its 300px column) */
 .planet {
   position: relative;
-  width: 300px;
+  width: 224px;
+  margin: 24px auto;
   aspect-ratio: 1;
   border-radius: 50%;
   background: var(--pulse-raised);
   display: grid;
   place-items: center;
   text-align: center;
-  padding: 40px;
-  transition: background-color 180ms ease;
+  padding: 24px;
+  transition: background-color 180ms var(--pulse-ease);
 }
 
 .planet::before {
   content: "";
   position: absolute;
-  inset: -16px -40px;
+  inset: -12px -36px;
   border: 1px solid #2a2a2a; /* taste-skill-ignore: the planet's orbit ring, part of the motif */
   border-radius: 50%;
   transform: rotate(-18deg);
@@ -210,7 +202,7 @@
 }
 
 .planetTitle {
-  font-size: 30px;
+  font-size: 28px;
   margin-bottom: 8px;
 }
 
@@ -237,7 +229,7 @@
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
 }
 
@@ -314,16 +306,10 @@
   font-family: var(--pulse-font-display);
   font-weight: 600;
   font-stretch: 72%;
-  font-size: 22px;
+  font-size: 20px;
 }
 
 .muted {
-  color: var(--pulse-soft);
-}
-
-.soon {
-  display: inline-block;
-  margin-inline-end: 16px;
   color: var(--pulse-soft);
 }
 
@@ -333,22 +319,55 @@
   .launch {
     grid-template-columns: 1fr;
   }
-  .planet {
-    width: min(300px, 100%);
-    margin-inline: auto;
-  }
   .rail {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .step {
+    padding: 8px;
+  }
+  .stepName {
+    font-size: 18px;
+  }
+  .stepSub {
+    font-size: 12px;
   }
   .head {
     flex-direction: column;
     align-items: flex-start;
   }
   .title {
-    font-size: 26px;
+    font-size: 28px;
   }
-  .clock {
-    text-align: start;
+}
+
+/* a phone: the sky as a band between the result's title and its figures; the system's data under
+   its name, not in a column of its own */
+@media (max-width: 600px) {
+  .result {
+    justify-content: flex-start;
+    gap: 204px;
+  }
+  .result .sky {
+    inset: 88px 0 auto;
+    height: 216px;
+  }
+  .table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    padding: 12px 0;
+    border-top: 1px solid var(--pulse-line);
+  }
+  .table td {
+    padding: 0;
+    border: 0;
+  }
+  .table td:nth-child(2) {
+    grid-row: 2;
+  }
+  .table td:last-child {
+    grid-column: 2;
+    grid-row: 1 / span 2;
   }
 }

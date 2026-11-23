@@ -96,10 +96,7 @@ describe("the gate", () => {
     // the heading comes from /api/me; the rest waits for /api/company
     expect(await screen.findByRole("button", { name: he("upload.choose") })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: he("home.demo") })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: he("systems.connect") })).toHaveLength(5);
-    screen
-      .getAllByRole("button", { name: he("systems.connect") })
-      .forEach((button) => expect(button).toBeDisabled());
+    expect(screen.getAllByText(he("systems.soon"))).toHaveLength(5);
     expect(screen.getByText(he("data.empty"))).toBeInTheDocument();
   });
 });
