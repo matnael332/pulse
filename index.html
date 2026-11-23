@@ -3,109 +3,188 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#000000">
 <title>Pulse דמו חי</title>
 <meta name="description" content="Pulse מזהה לקוחות שעומדים לבטל מנוי, עד 60 יום מראש, ומסביר למה. דמו חי על נתונים בדויים.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Secular+One&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600&family=Noto+Sans+Hebrew:wdth,wght@62.5..100,400..700&display=swap" rel="stylesheet">
 <style>
+/* the site's own tokens (web/src/global.css): black ground, white ink, one red, for risk only */
 :root{
-  /* layout: summary strip on top, then a working risk list with a detail panel beside it, then how it works */
-  --ink:#16222f; --paper:#f3f5f2; --card:#ffffff; --line:#d9dfd9; --muted:#5b6872;
-  --accent:#0e6f63; --accent-soft:#dcefeb;
-  --risk:#b8402b; --risk-soft:#f8e3de; --ok:#3f7d4e;
-  --display:"Secular One","Assistant",system-ui,sans-serif;
-  --body:"Assistant",system-ui,"Segoe UI",Arial,sans-serif;
-  color-scheme:light;
+  --ground:#000; --surface:#0a0a0a; --raised:#161616; --line:#1f1f1f; --outline:#3a3a3f;
+  --ink:#fff; --muted:#b4b4b4; --soft:#949494; --red:#ff453a;
+  --body:"Noto Sans Hebrew",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --display:"Barlow Condensed",var(--body);
+  --ease:cubic-bezier(.22,1,.36,1);
+  color-scheme:dark;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --ink:#e6ece8; --paper:#101820; --card:#17222c; --line:#2a3743; --muted:#9aa8b2;
-  --accent:#4cc2ae; --accent-soft:#163a37; --risk:#ff8a70; --risk-soft:#3a201b; --ok:#7cc48d; color-scheme:dark;}}
-:root[data-theme="dark"]{
-  --ink:#e6ece8; --paper:#101820; --card:#17222c; --line:#2a3743; --muted:#9aa8b2;
-  --accent:#4cc2ae; --accent-soft:#163a37; --risk:#ff8a70; --risk-soft:#3a201b; --ok:#7cc48d; color-scheme:dark;}
 *{box-sizing:border-box}
 html,body{margin:0}
-body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.55}
-a{color:var(--accent)}
-.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
-header{padding:28px 0 18px;border-bottom:1px solid var(--line)}
-.brand{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.logo{font-family:var(--display);font-size:30px;letter-spacing:.5px;direction:ltr}
-.logo span{color:var(--accent)}
-.tag{font-size:14px;background:var(--accent-soft);color:var(--accent);padding:3px 10px;border-radius:99px;font-weight:600}
-h1{font-family:var(--display);font-weight:400;font-size:clamp(26px,3.6vw,40px);line-height:1.2;margin:14px 0 6px;text-wrap:balance;max-width:24ch}
-.lead{color:var(--muted);max-width:62ch;margin:0}
-.demo-note{margin-top:12px;font-size:14px;color:var(--muted)}
-.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:22px 0}
-.tile{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
-.tile b{display:block;font-family:var(--display);font-weight:400;font-size:30px;font-variant-numeric:tabular-nums}
-.tile.risk b{color:var(--risk)}
-.tile small{color:var(--muted);font-size:14px}
-.main{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:10px}
-.bar{display:flex;gap:8px;flex-wrap:wrap;padding:12px;border-bottom:1px solid var(--line)}
-.bar input,.bar select{font:inherit;font-size:15px;padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:var(--paper);color:var(--ink)}
+body{background:var(--ground);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+::selection{background:var(--ink);color:var(--ground)}
+.wrap{max-width:1360px;margin:0 auto;padding-inline:36px}
+h1,h2,.wordmark,.value{font-family:var(--display);font-weight:600;font-stretch:72%;margin:0}
+
+/* the customer's point: red at high risk, the same in the sky, the list and the detail */
+.point{display:inline-block;flex:none;width:8px;height:8px;border-radius:50%;background:var(--soft)}
+.point.high{background:var(--red)}
+.level{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;font-size:14px;color:var(--soft)}
+.level.high{color:var(--red);font-weight:600}
+
+/* the bar on top */
+.top{border-bottom:1px solid var(--raised)}
+.top .wrap{display:flex;align-items:center;gap:12px;height:64px}
+.wordmark{font-size:22px;letter-spacing:.14em;line-height:1;direction:ltr}
+.tag{border:1px solid var(--outline);border-radius:4px;padding:0 8px;font-size:13px;color:var(--muted)}
+
+/* the first screen: the words on one side, the customers' sky on the far one */
+.hero{position:relative;overflow:hidden}
+.hero .wrap{position:relative;z-index:1;min-height:500px;display:flex;flex-direction:column;justify-content:center;padding-block:56px}
+.copy{width:min(560px,42vw)}
+h1{font-size:clamp(34px,4vw,56px);line-height:1.12;text-wrap:balance}
+.lead{font-size:18px;color:var(--ink);margin:20px 0 0}
+.demo-note{font-size:14px;color:var(--soft);margin:16px 0 0}
+.sky{position:absolute;inset:0}
+.sky canvas{position:absolute;inset:0;width:100%;height:100%}
+.planet{position:absolute;border-radius:50%;background:#101010}
+.named{position:absolute;inset:0 auto auto 0;display:grid;width:max-content;font-size:13px;line-height:18px;color:var(--soft);pointer-events:none}
+.named[hidden]{display:none}
+.named[data-side="right"]{justify-items:left}
+.named[data-side="above"],.named[data-side="below"]{justify-items:center}
+.named bdi{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--ink)}
+.motion{position:absolute;z-index:2;inset-inline-end:max(36px,calc((100% - 1288px)/2));bottom:16px;font:inherit;font-size:14px;color:var(--muted);background:none;border:0;padding:8px 0;cursor:pointer;text-decoration:underline;text-underline-offset:4px;transition:color 180ms var(--ease)}
+.motion:hover{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){.motion{display:none}}
+
+/* figures in one panel, split by hairlines */
+.strip{display:grid;background:var(--surface);border-radius:6px}
+.strip.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.strip.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.strip>div{padding:20px 24px;border-inline-start:1px solid var(--line)}
+.strip>div:first-child{border-inline-start:0}
+.value{display:block;font-size:40px;line-height:1.15;font-variant-numeric:tabular-nums}
+.value.high{color:var(--red)}
+.strip small{display:block;margin-top:4px;color:var(--muted);font-size:14px;text-wrap:pretty}
+
+/* the list and the customer beside it */
+.main{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:24px;align-items:start;margin-top:24px}
+.panel{background:var(--surface);border-radius:6px;overflow:hidden}
+.bar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding:24px 24px 16px}
+.bar label{font-size:14px;color:var(--soft)}
+.bar input,.bar select{font:inherit;font-size:14px;height:36px;padding:0 12px;border:1px solid var(--outline);border-radius:6px;background:var(--raised);color:var(--ink)}
 .bar input{flex:1;min-width:140px}
-.list{max-height:520px;overflow:auto}
+.bar input::placeholder{color:var(--soft)}
+.bar select{appearance:none;padding-inline-end:32px;background-repeat:no-repeat;background-position:left 12px center;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23949494' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 4.5 6 8.5l4-4'/%3E%3C/svg%3E")}
+.list{max-height:560px;overflow:auto}
 table{width:100%;border-collapse:collapse;font-size:15px}
-th{position:sticky;top:0;background:var(--card);text-align:right;font-weight:600;color:var(--muted);padding:8px 12px;border-bottom:1px solid var(--line);font-size:13px}
-td{padding:9px 12px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
-tbody tr{cursor:pointer}
-tbody tr:hover{background:var(--accent-soft)}
-tbody tr.sel{background:var(--accent-soft);box-shadow:inset -4px 0 0 var(--accent)}
-tbody tr:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-.pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:99px}
-.pill.high{background:var(--risk-soft);color:var(--risk)}
-.pill.normal{background:var(--accent-soft);color:var(--ok)}
-.meter{height:6px;background:var(--line);border-radius:3px;overflow:hidden;width:70px;display:inline-block;vertical-align:middle;margin-inline-start:6px}
-.meter i{display:block;height:100%;background:var(--risk)}
-.detail{padding:18px}
-.detail h2{font-family:var(--display);font-weight:400;font-size:24px;margin:0 0 2px}
-.meta{color:var(--muted);font-size:14px}
-.big{display:flex;align-items:baseline;gap:10px;margin:14px 0 4px}
-.big b{font-family:var(--display);font-weight:400;font-size:44px;color:var(--risk);font-variant-numeric:tabular-nums}
-.reason{border-top:1px solid var(--line);padding:10px 0}
-.reason h3{font-size:16px;margin:0;display:flex;justify-content:space-between;gap:8px}
-.reason p{margin:2px 0 0;color:var(--muted);font-size:14px}
-.share{height:5px;background:var(--line);border-radius:3px;margin-top:6px}
-.share i{display:block;height:100%;background:var(--accent);border-radius:3px}
-.action{margin-top:12px;background:var(--accent-soft);border-radius:8px;padding:10px 12px;font-size:15px}
-.action b{color:var(--accent)}
-section{margin:36px 0}
-section h2{font-family:var(--display);font-weight:400;font-size:26px;margin:0 0 12px}
-.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.step{border-top:3px solid var(--accent);padding-top:10px}
-.step b{display:block;margin-bottom:2px}
-.step p{margin:0;color:var(--muted);font-size:15px}
-.quality{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.cta{background:var(--ink);color:var(--paper);border-radius:12px;padding:22px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
-.cta h2{color:var(--paper);margin:0}
-.cta p{margin:4px 0 0;opacity:.85}
-.btns{display:flex;gap:10px;flex-wrap:wrap}
-.btn{display:inline-block;padding:10px 16px;border-radius:8px;font-weight:700;text-decoration:none;background:var(--accent);color:#fff}
-.btn.ghost{background:transparent;border:1px solid currentColor;color:var(--paper)}
-footer{color:var(--muted);font-size:13px;padding:18px 0 40px}
-@media (max-width:860px){.main{grid-template-columns:1fr}.tiles,.quality{grid-template-columns:repeat(2,1fr)}.steps{grid-template-columns:1fr}}
-@media (max-width:420px){.tiles,.quality{grid-template-columns:1fr}.hide-s{display:none}}
+th{position:sticky;top:0;background:var(--surface);text-align:start;font-weight:400;color:var(--soft);padding:12px;box-shadow:inset 0 -1px 0 var(--line);font-size:13px}
+td{padding:12px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{padding-inline-start:24px;width:56px;color:var(--soft)}
+th:last-child,td:last-child{padding-inline-end:24px}
+tbody tr{cursor:pointer;transition:background-color 180ms var(--ease)}
+tbody tr:hover{background:#111}
+tbody tr.sel{background:var(--raised)}
+tbody tr.sel td:first-child{color:var(--ink)}
+tbody tr:focus-visible{outline-offset:-2px}
+.chance{display:inline-flex;align-items:center;gap:12px}
+.chance b{font-weight:400;min-width:52px}
+.meter{height:4px;width:72px;border-radius:2px;background:var(--line);overflow:hidden}
+.meter i{display:block;height:100%;border-radius:2px;background:var(--soft)}
+.meter i.high{background:var(--red)}
+.none{color:var(--soft)}
+.detail{padding:24px}
+.detail h2{font-size:24px;line-height:1.2;margin:8px 0 4px}
+.meta{color:var(--soft);font-size:14px}
+.big{display:flex;align-items:baseline;gap:12px;margin:16px 0 20px}
+.why{margin-bottom:8px}
+.reason{border-top:1px solid var(--line);padding:12px 0}
+.reason h3{font-size:16px;font-weight:600;margin:0;display:flex;justify-content:space-between;gap:12px}
+.reason h3 .meta{font-weight:400;white-space:nowrap}
+.reason p{margin:0;color:var(--soft);font-size:14px}
+.share{height:4px;border-radius:2px;margin-top:8px;background:var(--line)}
+.share i{display:block;height:100%;border-radius:2px;background:var(--soft)}
+.share i.most{background:var(--ink)}
+.action{margin-top:12px;background:var(--raised);border-radius:4px;padding:12px 16px;font-size:15px;color:var(--muted)}
+.action b{color:var(--ink);font-weight:600}
+
+section{margin:96px 0}
+section h2{font-size:32px;line-height:1.2;margin-bottom:24px}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
+.step{border-top:1px solid var(--outline);padding-top:16px}
+.step b{display:block;font-weight:600;margin-bottom:4px}
+.step p{margin:0;color:var(--muted);font-size:15px;text-wrap:pretty}
+.foot{margin:16px 0 0}
+.cta{background:var(--surface);border-radius:6px;padding:40px;display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap}
+.cta h2{margin:0 0 4px}
+.cta p{margin:0;color:var(--muted)}
+.btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;min-height:48px;padding:0 24px;border:1px solid var(--ink);border-radius:999px;font-weight:600;text-decoration:none;background:var(--ink);color:var(--ground);transition:background-color 180ms var(--ease),color 180ms var(--ease),transform 140ms var(--ease)}
+.btn:hover{background:var(--muted);border-color:var(--muted)}
+.btn:active{transform:scale(.97)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--outline)}
+.btn.ghost:hover{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+footer{color:var(--soft);font-size:13px;padding-bottom:40px}
+
+@media (max-width:860px){
+  .wrap{padding-inline:20px}
+  .hero .wrap{min-height:0;padding-block:40px 24px}
+  .copy{width:auto}
+  .lead{font-size:16px}
+  .sky{position:relative;height:240px;margin-bottom:40px}
+  .motion{inset-inline-end:20px;bottom:0}
+  .main{grid-template-columns:minmax(0,1fr)}
+  .strip.four{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .strip.four>div:nth-child(odd){border-inline-start:0}
+  .strip.four>div:nth-child(n+3){border-top:1px solid var(--line)}
+  .steps{grid-template-columns:minmax(0,1fr)}
+  .strip.three{grid-template-columns:minmax(0,1fr)}
+  .strip.three>div{border-inline-start:0}
+  .strip.three>div+div{border-top:1px solid var(--line)}
+  section{margin:64px 0}
+  .cta{padding:24px}
+}
+@media (max-width:420px){
+  .hide-s{display:none}
+  .bar{padding:20px 16px 12px}
+  .bar input{flex-basis:100%}
+  .bar select{flex:1}
+  th,td{padding-inline:6px}
+  th:first-child,td:first-child{width:40px;padding-inline-start:16px}
+  th:last-child,td:last-child{padding-inline-end:16px}
+  .chance{gap:8px}
+  .chance b{min-width:46px}
+  .meter{width:24px}
+  .detail{padding:20px 16px}
+  .value{font-size:32px}
+  .strip>div{padding:16px}
+}
 </style>
 </head>
 <body>
-<header>
-  <div class="wrap">
-    <div class="brand"><div class="logo">pul<span>se</span></div><span class="tag">דמו חי</span></div>
+<div class="top"><div class="wrap">
+  <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="6" fill="#fff"/><path d="M5 17h5l3-7 5 13 3-6h6" fill="none" stroke="#000" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <span class="wordmark" dir="ltr" translate="no">PULSE</span><span class="tag">דמו חי</span>
+</div></div>
+<header class="hero">
+  <div class="wrap"><div class="copy">
     <h1>יודעים מי מהלקוחות עומד לעזוב, חודשיים לפני שהוא מבטל</h1>
     <p class="lead">Pulse קורא את נתוני השימוש של הלקוחות שלכם, מסמן מי בסיכון לבטל מנוי ב־60 הימים הקרובים, ומסביר בשפה פשוטה מה גרם לסימון. ככה צוות שירות הלקוחות יודע עם מי לדבר השבוע ועל מה.</p>
     <p class="demo-note">הדמו רץ על נתונים בדויים של חברת תוכנה לניהול נוכחות ושכר: 108 חברות לקוח פעילות, תמונת מצב של אוגוסט 2025. כל המספרים בעמוד יצאו מריצה אמיתית של המערכת.</p>
-  </div>
+  </div></div>
+  <div class="sky" aria-hidden="true"><div class="planet"></div><canvas></canvas></div>
+  <button type="button" class="motion" aria-pressed="false">עצירת התנועה</button>
 </header>
 
 <main class="wrap">
-  <div class="tiles" id="tiles"></div>
+  <div class="strip four" id="tiles"></div>
 
   <div class="main">
     <div class="panel">
       <div class="bar">
-        <label for="q" class="hide-s" style="align-self:center;font-size:14px;color:var(--muted)">חיפוש</label>
+        <label for="q" class="hide-s">חיפוש</label>
         <input id="q" type="search" placeholder="שם לקוח, ענף או אזור">
         <select id="lvl" aria-label="רמת סיכון"><option value="">כל רמות הסיכון</option><option value="high">סיכון גבוה</option><option value="normal">סיכון רגיל</option></select>
         <select id="ind" aria-label="ענף"><option value="">כל הענפים</option></select>
@@ -129,8 +208,8 @@ footer{color:var(--muted);font-size:13px;padding:18px 0 40px}
 
   <section>
     <h2>כמה אפשר לסמוך על זה</h2>
-    <div class="quality" id="quality"></div>
-    <p class="meta" style="margin-top:10px">המודל אומן על ינואר 2022 עד אוקטובר 2024 ונבדק על ינואר עד יוני 2025, חודשים שהוא לא ראה. נבדקו שלושה מודלים, ונבחר זה שהצליח יותר בבדיקה החוזרת.</p>
+    <div class="strip three" id="quality"></div>
+    <p class="meta foot">המודל אומן על ינואר 2022 עד אוקטובר 2024 ונבדק על ינואר עד יוני 2025, חודשים שהוא לא ראה. נבדקו שלושה מודלים, ונבחר זה שהצליח יותר בבדיקה החוזרת.</p>
   </section>
 
   <section class="cta">
@@ -175,12 +254,12 @@ function tiles(){
     ['risk', nf.format(high.length), 'בסיכון גבוה לבטל ב־60 יום'],
     ['', '60 יום', 'התראה מראש, לפני שהלקוח מבטל'],
     ['', 'פי ' + M.lift, 'יותר מבטלים בעשירון העליון מאשר בבחירה אקראית']
-  ].map(([c,b,s])=>`<div class="tile ${c}"><b>${b}</b><small>${s}</small></div>`).join('');
+  ].map(([c,b,s])=>`<div><b class="value ${c==='risk'?'high':''}">${b}</b><small>${s}</small></div>`).join('');
   document.getElementById('quality').innerHTML = [
     [pct(M.prec10/100), 'מהלקוחות שבעשירון העליון של הרשימה אכן ביטלו, לעומת ' + M.base + '% בכלל הלקוחות'],
     [M.roc.toFixed(2), 'מדד ROC AUC, כשמודל מקרי מקבל 0.50 ומודל מושלם 1.00'],
     [nf.format(M.test_rows), 'חודשי לקוח בבדיקה, שהמודל לא ראה באימון']
-  ].map(([b,s])=>`<div class="tile"><b>${b}</b><small>${s}</small></div>`).join('');
+  ].map(([b,s])=>`<div><b class="value">${b}</b><small>${s}</small></div>`).join('');
 }
 const inds = [...new Set(A.map(a=>a.industry))].sort();
 document.getElementById('ind').innerHTML += inds.map(i=>`<option>${i}</option>`).join('');
@@ -189,25 +268,25 @@ function render(){
   const q = document.getElementById('q').value.trim(), l = document.getElementById('lvl').value, i = document.getElementById('ind').value;
   const rows = A.filter(a=>(!l||a.level===l)&&(!i||a.industry===i)&&(!q||(a.name+a.industry+a.region).includes(q)));
   document.getElementById('rows').innerHTML = rows.length ? rows.map(a=>`<tr tabindex="0" data-id="${a.id}" class="${a.id===sel?'sel':''}">
-    <td>${a.rank}</td><td>${a.name}</td><td class="hide-s">${a.industry}</td>
-    <td>${pct(a.p,1)}<span class="meter"><i style="width:${Math.max(2,a.p*100)}%"></i></span></td>
-    <td><span class="pill ${a.level}">${a.level==='high'?'גבוה':'רגיל'}</span></td></tr>`).join('')
-    : `<tr><td colspan="5" style="color:var(--muted)">אין לקוחות שמתאימים לסינון. נסו לנקות את החיפוש.</td></tr>`;
+    <td>${a.rank}</td><td><bdi>${a.name}</bdi></td><td class="hide-s">${a.industry}</td>
+    <td><span class="chance"><b>${pct(a.p,1)}</b><span class="meter"><i class="${a.level}" style="width:${Math.max(2,a.p*100)}%"></i></span></span></td>
+    <td><span class="level ${a.level}"><span class="point ${a.level}" aria-hidden="true"></span>${a.level==='high'?'גבוה':'רגיל'}</span></td></tr>`).join('')
+    : `<tr><td colspan="5" class="none">אין לקוחות שמתאימים לסינון. נסו לנקות את החיפוש.</td></tr>`;
 }
 function detail(){
   const a = A.find(x=>x.id===sel);
   const top = a.reasons.find(r=>ACT[r.feature]);
   document.getElementById('detail').innerHTML = `
-    <span class="pill ${a.level}">${a.level==='high'?'סיכון גבוה':'סיכון רגיל'}</span>
-    <h2 style="margin-top:8px">${a.name}</h2>
+    <span class="level ${a.level}"><span class="point ${a.level}" aria-hidden="true"></span>${a.level==='high'?'סיכון גבוה':'סיכון רגיל'}</span>
+    <h2><bdi>${a.name}</bdi></h2>
     <div class="meta">${a.industry} · ${a.region} · מסלול ${a.plan} · ${nf.format(a.employees)} עובדים · ותק ${nf.format(a.tenure)} חודשים</div>
-    <div class="big"><b>${pct(a.p,1)}</b><span class="meta">סיכוי לבטל ב־60 הימים הקרובים</span></div>
-    <div class="meta" style="margin-bottom:6px">מה השפיע על הציון</div>
-    ${a.reasons.map(r=>{const F=FEAT[r.feature]||{n:r.label,f:v=>v};
+    <div class="big"><b class="value ${a.level}">${pct(a.p,1)}</b><span class="meta">סיכוי לבטל ב־60 הימים הקרובים</span></div>
+    <div class="meta why">מה השפיע על הציון</div>
+    ${a.reasons.map((r,k)=>{const F=FEAT[r.feature]||{n:r.label,f:v=>v};
       const v = r.value==null ? 'חסר' : F.f(r.value), t = F.f(r.typical);
       const dir = typeof r.value==='number' && typeof r.typical==='number' ? (r.value>r.typical?'גבוה מהרגיל':r.value<r.typical?'נמוך מהרגיל':'כמו הרגיל') : (r.value==null?'אין נתון':'שונה מהרוב');
       return `<div class="reason"><h3><span>${r.label}</span><span class="meta">${pct(r.share)} מההשפעה</span></h3>
-      <p>${F.n}: ${v}, ${dir} (אצל רוב הלקוחות ${t})</p><div class="share"><i style="width:${r.share*100}%"></i></div></div>`}).join('')}
+      <p>${F.n}: ${v}, ${dir} (אצל רוב הלקוחות ${t})</p><div class="share"><i class="${k===0?'most':''}" style="width:${r.share*100}%"></i></div></div>`}).join('')}
     ${top?`<div class="action"><b>הצעד הבא: </b>${ACT[top.feature]}</div>`:''}`;
 }
 function pick(id){sel=id;render();detail();}
@@ -215,6 +294,220 @@ document.getElementById('rows').addEventListener('click',e=>{const tr=e.target.c
 document.getElementById('rows').addEventListener('keydown',e=>{if(e.key==='Enter'){const tr=e.target.closest('tr[data-id]');if(tr)pick(tr.dataset.id);}});
 ['q','lvl','ind'].forEach(id=>document.getElementById(id).addEventListener('input',render));
 tiles();render();detail();
+
+// The sky: customers in orbit. Points of light circle a centre on tilted ellipses. On the landing
+// page, every few seconds one drifts off its orbit, turns red and leaves, and a new one fades in, so
+// the count stays the same. A result's sky is different: one point per scored account, the ones at
+// high risk red on the outer ring, and nobody leaves. A few of the red points carry a customer's
+// name: those hold their place (a spot the layout chooses, clear of the text) and only sway.
+// Pure: the canvas (Orbit.tsx) only draws what this computes, and the tests drive it with a seed.
+
+const RINGS = 4;
+const RED_AFTER = 1.6; // seconds of drift to turn fully red
+const FADE_AFTER = 2.2; // seconds of drift before it fades out
+const TILT = -0.32; // radians
+
+/** Where a named point stands, and the side of it its name is written on. */
+
+/** A small seeded generator (mulberry32), so a seed always draws the same sky. */
+function seeded(seed        )               {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function satellite(random              , visible         , risk = false)            {
+  const ring = risk ? RINGS - 1 : Math.floor(random() * RINGS);
+  const direction = ring % 2 ? 1 : -1;
+  return {
+    ring,
+    angle: random() * Math.PI * 2,
+    speed: (0.05 + random() * 0.08) * direction * (1.4 - ring * 0.18),
+    size: 1.2 + random() * 1.8,
+    drifting: false,
+    t: 0,
+    out: 0,
+    alpha: visible ? 1 : 0,
+    risk,
+    home: null,
+    sway: 0,
+  };
+}
+
+function createOrbit(count        , seed = 7, options             = {})        {
+  const random = seeded(seed);
+  const risk = Math.min(options.risk ?? 0, count);
+  const satellites = Array.from({ length: count }, (_, i) => satellite(random, true, i < risk));
+  return { satellites, nextDrift: 1.5, random, leaving: options.leaving ?? true };
+}
+
+/** The first points at high risk take the layout's spots, and hold them. */
+function pin(orbit       , spots        )       {
+  orbit.satellites.forEach((s, i) => {
+    const spot = s.risk ? spots[i] : undefined;
+    s.home = spot ? spot.angle : null;
+    if (spot) Object.assign(s, { ring: spot.ring, angle: spot.angle, size: 3, sway: i * 2 });
+  });
+}
+
+/** Advance by dt seconds (clamped, so a tab that comes back does not jump). The one that leaves is
+ * one the visitor can see: `seen` says which are clear of the text. */
+function step(orbit       , dt        , seen                            = () => true)       {
+  const d = Math.min(Math.max(dt, 0), 0.05);
+  orbit.nextDrift -= d;
+  if (orbit.leaving && orbit.nextDrift <= 0) {
+    const leaving = orbit.satellites.find(
+      (s) => !s.drifting && !s.risk && s.alpha === 1 && seen(s),
+    );
+    if (leaving) leaving.drifting = true;
+    orbit.nextDrift = 4 + orbit.random() * 3;
+  }
+  orbit.satellites.forEach((s, i) => {
+    if (s.home !== null) {
+      s.sway += d * 0.4;
+      s.angle = s.home + Math.sin(s.sway) * 0.04;
+      return;
+    }
+    s.angle += s.speed * d;
+    if (!s.drifting) {
+      s.alpha = Math.min(1, s.alpha + d * 0.6);
+      return;
+    }
+    s.t += d;
+    s.out += s.t * s.t * 0.06;
+    if (s.t > FADE_AFTER) s.alpha -= d * 0.7;
+    if (s.alpha <= 0) orbit.satellites[i] = satellite(orbit.random, false);
+  });
+}
+
+/** The radii of a ring, before the tilt. */
+function ellipse(ring        , out        , radius        )                             {
+  const rx = radius * (0.75 + ring * 0.28) + out * radius * 0.5;
+  return { rx, ry: rx * 0.34 };
+}
+
+function place(s           , g          )         {
+  const { rx, ry } = ellipse(s.ring, s.out, g.radius);
+  const x0 = Math.cos(s.angle) * rx;
+  const y0 = Math.sin(s.angle) * ry;
+  const red = s.risk ? 1 : s.drifting ? Math.min(1, s.t / RED_AFTER) : 0;
+  return {
+    x: g.cx + x0 * Math.cos(TILT) - y0 * Math.sin(TILT),
+    y: g.cy + x0 * Math.sin(TILT) + y0 * Math.cos(TILT),
+    r: s.size + red * 1.6,
+    alpha: Math.max(0, s.alpha) * (0.55 + 0.45 * (s.size / 3)),
+    red,
+  };
+}
+
+// The sky of this run: one point per customer, the ones at high risk red, the three likeliest named.
+// The motion and the places are the site's own (web/src/landing/sky.ts, above).
+(function(){
+  const canvas = document.querySelector('.sky canvas'), planet = document.querySelector('.planet');
+  const ctx = canvas.getContext('2d');
+  if(!ctx) return;
+  const ASIDE = 12, EDGE = 16, MOST_WIDE = 180;
+  const high = A.filter(a=>a.level==='high').sort((a,b)=>b.p-a.p);
+  const named = high.slice(0,3);
+  const labels = named.map(a=>{
+    const el = document.createElement('div');
+    el.className = 'named'; el.hidden = true;
+    const name = document.createElement('bdi'), note = document.createElement('span');
+    name.textContent = a.name; note.textContent = pct(a.p,1);
+    el.append(name,note);
+    document.querySelector('.sky').append(el);
+    return el;
+  });
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const orbit = createOrbit(A.length, 7, {risk:high.length, leaving:false});
+  const button = document.querySelector('.motion');
+  const ring = RINGS - 1;
+  let width = 0, height = 0, g, frame = 0, last = 0, visible = true, paused = false;
+
+  function layout(w,h){
+    if(w < 861) return {cx:w*.5, cy:h*.5, radius:Math.min(h*.42,w*.2),
+      spots:[{ring,angle:-.9,side:'above'},{ring,angle:2.2,side:'below'}]};
+    return {cx:w*.2, cy:h*.5, radius:Math.min(h*.42,w*.146),
+      spots:[{ring,angle:-.25,side:'right',lift:.8},{ring,angle:.35,side:'right'},{ring,angle:.95,side:'right',lift:.2}]};
+  }
+  function boxes(){
+    return labels.flatMap((el,i)=>{
+      const spot = g.spots[i], s = orbit.satellites[i];
+      if(!spot || s.home == null) return [];
+      const p = place(s,g), w = el.offsetWidth, h = el.offsetHeight, lift = spot.lift ?? .5;
+      const [x,y] = {right:[p.x+ASIDE,p.y-h*lift], above:[p.x-w/2,p.y-ASIDE-h], below:[p.x-w/2,p.y+ASIDE]}[spot.side];
+      el.style.transform = `translate(${x}px, ${y}px)`;
+      return [[x,y,x+w,y+h]];
+    });
+  }
+  function fit(){
+    labels.forEach((el,i)=>{
+      const spot = g.spots[i], s = orbit.satellites[i];
+      el.hidden = !spot || s.home == null;
+      if(el.hidden) return;
+      const {x} = place(s,g);
+      const room = spot.side === 'right' ? width-x-ASIDE : 2*Math.min(x,width-x);
+      el.dataset.side = spot.side;
+      el.style.maxWidth = Math.min(MOST_WIDE, Math.max(0, room-EDGE)) + 'px';
+    });
+  }
+  function paint(){
+    const taken = boxes();
+    ctx.clearRect(0,0,width,height);
+    ctx.strokeStyle = 'rgba(255,255,255,.08)';
+    ctx.lineWidth = 1;
+    for(let r=0;r<RINGS;r++){
+      const {rx,ry} = ellipse(r,0,g.radius);
+      ctx.beginPath(); ctx.ellipse(g.cx,g.cy,rx,ry,TILT,0,Math.PI*2); ctx.stroke();
+    }
+    const free = orbit.satellites.filter(s=>s.home===null), pinned = orbit.satellites.filter(s=>s.home!==null);
+    for(const s of [...free,...pinned]){
+      const p = place(s,g);
+      if(p.alpha<=0 || taken.some(([l,t,r,b])=>p.x>l-4 && p.x<r+4 && p.y>t-2 && p.y<b+2)) continue;
+      ctx.fillStyle = `rgba(255,${Math.round(255-p.red*186)},${Math.round(255-p.red*197)},${p.alpha})`;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+    }
+  }
+  function size(){
+    const ratio = Math.min(devicePixelRatio||1,2);
+    width = canvas.clientWidth; height = canvas.clientHeight;
+    canvas.width = Math.round(width*ratio); canvas.height = Math.round(height*ratio);
+    ctx.setTransform(ratio,0,0,ratio,0,0);
+    g = layout(width,height);
+    const r = g.radius*.55;
+    Object.assign(planet.style,{left:`${g.cx-r}px`,top:`${g.cy-r}px`,width:`${2*r}px`,height:`${2*r}px`});
+    pin(orbit, g.spots.slice(0,named.length));
+    fit(); paint();
+  }
+  function tick(now){
+    frame = requestAnimationFrame(tick);
+    if(now-last < 1000/30) return;
+    step(orbit,(now-last)/1000);
+    last = now; paint();
+  }
+  function run(){
+    cancelAnimationFrame(frame); frame = 0;
+    if(reduced.matches || paused || !visible || document.hidden) return paint();
+    last = performance.now(); frame = requestAnimationFrame(tick);
+  }
+  button.addEventListener('click',()=>{
+    paused = !paused;
+    button.setAttribute('aria-pressed',paused);
+    button.textContent = paused ? 'הפעלת התנועה' : 'עצירת התנועה';
+    run();
+  });
+  size(); run();
+  new ResizeObserver(size).observe(canvas);
+  new IntersectionObserver(([e])=>{visible=e.isIntersecting;run();}).observe(canvas);
+  document.addEventListener('visibilitychange',run);
+  reduced.addEventListener('change',run);
+  if(document.fonts) document.fonts.ready.then(()=>{fit();paint();});
+})();
 </script>
 </body>
 </html>
