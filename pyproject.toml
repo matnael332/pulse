@@ -76,6 +76,7 @@ packages = [
     "backend/pulse_specs",
     "backend/pulse_ingest",
     "backend/pulse_server",
+    "backend/pulse_demo",
 ]
 
 [tool.crewai]

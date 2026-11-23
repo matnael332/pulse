@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import tempfile
 import zipfile
+from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
@@ -287,7 +288,13 @@ def _hebrew(name: str, column: pd.Series) -> pd.Series:
     return lowered.map(values).fillna(column)  # an unknown spelling stays as it was
 
 
-def _styled(table: str, df: pd.DataFrame, kinds: dict[str, str], style: str) -> pd.DataFrame:
+def _styled(
+    table: str,
+    df: pd.DataFrame,
+    kinds: dict[str, str],
+    style: str,
+    names: Sequence[str] = (),
+) -> pd.DataFrame:
     out = pd.DataFrame(index=df.index)
     for name, kind in kinds.items():
         column = df[name]
@@ -304,6 +311,8 @@ def _styled(table: str, df: pd.DataFrame, kinds: dict[str, str], style: str) -> 
             out[name] = column
     if table == "accounts":
         out["account_name"] = "לקוח " + out["account_id"]
+        if names:  # one per account, in order
+            out["account_name"] = list(names)[: len(df)]
     if table == "employees":
         n = np.arange(len(df))
         out["employee_name"] = ["עובד " + str(i + 1) for i in n]
@@ -346,8 +355,11 @@ def scramble(
     *,
     drop_groups: tuple[str, ...] = (),
     rows_per_sheet: int = EXCEL_MAX_ROWS,
+    account_names: Sequence[str] = (),
 ) -> Path:
-    """Write the scrambled export of ``raw_dir`` to ``out_zip``; returns the zip path."""
+    """Write the scrambled export of ``raw_dir`` to ``out_zip``; returns the zip path.
+
+    ``account_names``: the accounts' names in order ("לקוח 10001" and so on when not given)."""
     raw_dir, out_zip = Path(raw_dir), Path(out_zip)
     dropped = {t for g in drop_groups for t in wf.GROUP_TABLES[g]}
     keep = [t for t in LAYOUT if t not in dropped]
@@ -359,7 +371,7 @@ def scramble(
         for table in keep:
             where, name, _renames, encoding, sep, style = LAYOUT[table]
             kinds = schema["tables"][table]["columns"]
-            styled = _styled(table, tables[table], kinds, style)
+            styled = _styled(table, tables[table], kinds, style, account_names)
             if table == "punches":
                 stamp = tables[table]["punched_at"]
                 styled = styled.drop(columns=["punched_at"])

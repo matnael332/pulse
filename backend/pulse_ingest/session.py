@@ -32,6 +32,25 @@ RAW_FLOAT_FORMAT = "%.4f"
 MAX_DISTINCT = 200  # values.json keeps the distinct values of columns with at most this many
 
 
+try:  # the staged tables, ours from propose to apply: a pickle where there is no pyarrow
+    import pyarrow  # noqa: F401 - pandas writes the parquet
+
+    STAGED = ".parquet"
+except ImportError:  # the browser demo
+    STAGED = ".pkl"
+
+
+def _stage_table(df: pd.DataFrame, path: Path) -> None:
+    if path.suffix == ".parquet":
+        df.to_parquet(path, index=False)
+    else:
+        df.to_pickle(path)
+
+
+def _staged_table(path: Path) -> pd.DataFrame:
+    return pd.read_parquet(path) if path.suffix == ".parquet" else pd.read_pickle(path)
+
+
 def new_ingestion_id() -> str:
     return f"{datetime.now(UTC):%Y%m%d-%H%M%S}-{uuid.uuid4().hex[:6]}"
 
@@ -97,9 +116,9 @@ def propose(
     (staging / "tables").mkdir()
     index = {}
     for i, (name, df) in enumerate(grouped.items()):
-        df.to_parquet(staging / "tables" / f"{i:03d}.parquet", index=False)
-        index[name] = f"{i:03d}.parquet"
-    shutil.rmtree(staging / "files")  # the extracted originals: the parquet copies suffice
+        index[name] = f"{i:03d}{STAGED}"
+        _stage_table(df, staging / "tables" / index[name])
+    shutil.rmtree(staging / "files")  # the extracted originals: the staged copies suffice
     profile = profile_tables(grouped)
     structure = fingerprint(profile)
     write_json_lf(staging / "tables.json", index)
@@ -152,7 +171,7 @@ def apply(customer_dir: Path, ingestion: str, contract: IngestContract) -> dict:
     staging = layout.staging(ingestion)
     mapping = Mapping.model_validate(read_json(staging / "mapping.proposed.json"))
     index = read_json(staging / "tables.json")
-    tables = {name: pd.read_parquet(staging / "tables" / file) for name, file in index.items()}
+    tables = {name: _staged_table(staging / "tables" / file) for name, file in index.items()}
     present = contract.groups_present(list(mapping.tables))
     kept = [t.name for t in contract.tables if t.group in present and t.name in mapping.tables]
     mapping.tables = {name: mapping.tables[name] for name in kept}

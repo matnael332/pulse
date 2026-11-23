@@ -80,9 +80,15 @@ def record_narratives(out_dir: Path, language: str, **entries) -> None:
 
 
 def run_analyst_stage(
-    spec: DatasetSpec, raw_dir: str | Path, lookups_dir: str | Path, out_dir: str | Path
+    spec: DatasetSpec,
+    raw_dir: str | Path,
+    lookups_dir: str | Path,
+    out_dir: str | Path,
+    figures: bool = True,
 ) -> dict:
-    """Ingest, profile, clean, EDA and contract with template narratives. Returns a summary."""
+    """Ingest, profile, clean, EDA and contract with template narratives. Returns a summary.
+
+    ``figures=False`` draws nothing (and needs no plotting library)."""
     raw_dir, lookups_dir, out_dir = Path(raw_dir), Path(lookups_dir), Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     tables = load_raw_tables(raw_dir)
@@ -101,7 +107,9 @@ def run_analyst_stage(
     summary["grain"] = spec.grain
     summary["entity"] = spec.entity
     summary["figures"] = (
-        spec.eda_figures(summary, clean, out_dir / "figures") if spec.eda_figures else []
+        spec.eda_figures(summary, clean, out_dir / "figures")
+        if spec.eda_figures and figures
+        else []
     )
     write_json_lf(out_dir / "eda_summary.json", summary)
 
@@ -190,7 +198,9 @@ def assemble_feature_narrative(
     return source
 
 
-def run_modeling_stage(spec: DatasetSpec, out_dir: str | Path, seed: int | None = None) -> dict:
+def run_modeling_stage(
+    spec: DatasetSpec, out_dir: str | Path, seed: int | None = None, figures: bool = True
+) -> dict:
     """Train and compare models, write model.joblib, metrics and the two reports (templates),
     then score the snapshot rows when the spec has them (scores_current.csv, reasons.json)."""
     out_dir = Path(out_dir)
@@ -200,6 +210,7 @@ def run_modeling_stage(spec: DatasetSpec, out_dir: str | Path, seed: int | None 
         out_dir / "dataset_contract.json",
         out_dir,
         seed=spec.seed if seed is None else seed,
+        figures=figures,
     )
     summary["scoring"] = score_current(spec, out_dir)
     assemble_modeling_narratives(spec, out_dir)

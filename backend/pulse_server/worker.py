@@ -14,7 +14,6 @@ as a code for the company (``errors``) and the detail in the job row and the log
 
 from __future__ import annotations
 
-import csv
 import json
 import logging
 import os
@@ -29,7 +28,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from pulse_core.paths import repo_root
 from pulse_core.status import read_status
 from pulse_ingest import session
-from pulse_server import jobs, scores, steps
+from pulse_server import jobs, steps, view
 from pulse_server.db import make_engine
 from pulse_server.models import Company, Ingestion, Job, Run, utcnow
 from pulse_server.settings import Settings
@@ -275,7 +274,7 @@ class Worker:
                 log.warning("run %s: promotion failed; the run's own artifacts are used", run.id)
             run.status, run.finished_at = "succeeded", utcnow()
             run.stages_done = STAGES
-            run.summary = summarise(folder.runs / run.id / "artifacts", ingestion.report or {})
+            run.summary = view.summarise(folder.runs / run.id / "artifacts", ingestion.report or {})
             return jobs.finish(db, job)
         if code == 1:
             errors = " ".join(status.get("errors") or [])
@@ -315,24 +314,6 @@ class Worker:
             check=False,
         )
         return json.loads(result_path.read_text()) if result_path.exists() else {"ok": False}
-
-
-def summarise(artifacts: Path, report: dict) -> dict:
-    """Accounts scored per risk level, the revenue at risk and the snapshot date (for history)."""
-    counts = {"high": 0, "elevated": 0, "normal": 0}
-    levels: dict[str, str] = {}
-    path = artifacts / "scores_current.csv"
-    if path.exists():
-        with open(path, encoding="utf-8", newline="") as handle:
-            for row in csv.DictReader(handle):
-                counts[row["risk_level"]] = counts.get(row["risk_level"], 0) + 1
-                levels[row["account_id"]] = row["risk_level"]
-    return {
-        "accounts": sum(counts.values()),
-        **counts,
-        **scores.revenue(levels, scores.scored_mrr(artifacts)),
-        "snapshot_date": report.get("snapshot_date"),
-    }
 
 
 def main(settings: Settings | None = None) -> None:
