@@ -1,6 +1,7 @@
 // The page closes on the name, built from blocks: each letter knocked out of its own rectangle,
 // the rectangles of different heights, bottoms on one line (a drawing of the mark, in SVG).
 import { useI18n } from "../i18n";
+import { Slot } from "../slots";
 import classes from "./Landing.module.css";
 
 const W = 1000;
@@ -44,6 +45,7 @@ export function Footer() {
             {t("landing.nav.start")}
           </a>
         </div>
+        <Slot name="links" />
         <span dir="ltr">{t("landing.footer.rights")}</span>
       </div>
     </footer>

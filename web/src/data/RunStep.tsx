@@ -9,6 +9,7 @@ import { ErrorNotice } from "../components/ErrorNotice";
 import { useI18n } from "../i18n";
 import { label } from "../labels";
 import { usePoll } from "../poll";
+import { Slot } from "../slots";
 import classes from "./Data.module.css";
 import { Rail } from "./Rail";
 import { StepPanel } from "./StepPanel";
@@ -62,6 +63,7 @@ export function RunStep({ id, company }: { id: string; company: MyCompany | null
             {stage}
           </p>
           <Progress value={(run.stages_done / run.stages) * 100} size="lg" radius="xl" animated />
+          <Slot name="explain" step="model" />
         </StepPanel>
       )}
       {run.status === "failed" && (

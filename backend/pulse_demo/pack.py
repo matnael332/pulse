@@ -97,6 +97,16 @@ def fetch_pyodide(out: Path) -> None:
         _fetch(entry["file_name"], entry["sha256"], out)
 
 
+def list_files(out: Path) -> None:
+    """files.json: every file Python needs and its size, so the page can show how much is left."""
+    files = [
+        {"name": p.name, "bytes": p.stat().st_size}
+        for p in sorted(out.iterdir())
+        if p.name != "files.json"
+    ]
+    write_json_lf(out / "files.json", files, ndigits=None)
+
+
 def _sources() -> dict[str, Path]:
     files = {name: BACKEND / name for name in MODULES}
     for package in OURS:
@@ -132,6 +142,7 @@ def main(argv: list[str] | None = None) -> int:
     out = parser.parse_args(argv).out_dir
     pack_python(out / "py" / "pulse.zip")
     fetch_pyodide(out / "py")
+    list_files(out / "py")
     pack_sample(out / "sample")
     size = sum(p.stat().st_size for p in out.rglob("*") if p.is_file())
     print(f"{out}: {size / 1048576:.1f} MB")

@@ -18,6 +18,7 @@ import { ErrorNotice } from "../components/ErrorNotice";
 import { useI18n } from "../i18n";
 import { band, beside, Orbit } from "../landing/Orbit";
 import type { Geometry } from "../landing/sky";
+import { Slot } from "../slots";
 import { AtRiskTable } from "./AtRiskTable";
 import { ChangesPanel, useChanges } from "./ChangesView";
 import { RiskHistogram, TrendChart } from "./Charts";
@@ -95,6 +96,7 @@ export default function Overview({ run, currency }: { run: RunInfo; currency: Cu
 
   return (
     <div className={classes.stack}>
+      <Slot name="note" area="sky" />
       <Hero results={results} facts={facts} />
       {changes?.base && <ChangesPanel changes={changes} />}
       <AtRiskTable results={results} currency={money} />

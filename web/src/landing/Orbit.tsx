@@ -61,7 +61,7 @@ export function panelGeometry(width: number, height: number, rtl: boolean): Geom
   return {
     cx: width * (rtl ? 0.32 : 0.68),
     cy: height * 0.42,
-    radius: Math.min(width, height) * 0.5,
+    radius: Math.min(width * 0.16, height * 0.5), // clear of the words, however tall the panel
   };
 }
 

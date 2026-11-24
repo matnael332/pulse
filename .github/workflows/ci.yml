@@ -58,6 +58,10 @@ jobs:
           npm run typecheck
           npm test
           npm run build
+      - name: The site's build holds nothing of the public demo
+        working-directory: web
+        run: |
+          ! grep -rlE 'pyodide|sample-export' dist
 
 
   docker:

@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { devLogin } from "../api";
 import { useI18n } from "../i18n";
 import { useSession } from "../session";
+import { slots } from "../slots";
 import classes from "./Landing.module.css";
 
 interface Props {
@@ -12,7 +13,12 @@ interface Props {
   onError: (message: string) => void;
 }
 
-export function SignIn({ providers, short = false, onError }: Props) {
+export function SignIn(props: Props) {
+  const Entry = slots.entry; // the demo's way in, instead of the providers'
+  return Entry ? <Entry short={props.short} /> : <Providers {...props} />;
+}
+
+function Providers({ providers, short = false, onError }: Props) {
   const { t } = useI18n();
   const { refresh } = useSession();
   const [email, setEmail] = useState("");

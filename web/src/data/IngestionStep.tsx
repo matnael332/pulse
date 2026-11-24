@@ -17,6 +17,7 @@ import { ErrorNotice } from "../components/ErrorNotice";
 import { MappingReview } from "../components/MappingReview";
 import { useI18n } from "../i18n";
 import { usePoll } from "../poll";
+import { Slot } from "../slots";
 import classes from "./Data.module.css";
 import { Rail, type RailStep } from "./Rail";
 import { StepPanel } from "./StepPanel";
@@ -78,19 +79,23 @@ export function IngestionStep({ id, company }: { id: string; company: MyCompany 
               {ingestion.status === "proposing" ? t("ingestion.reading") : t("ingestion.preparing")}
             </p>
           </Group>
+          <Slot name="explain" step={ingestion.status === "proposing" ? "read" : "prepare"} />
         </StepPanel>
       )}
       {ingestion.status === "proposed" && review && (
-        <MappingReview
-          ingestionId={id}
-          review={review}
-          onChange={setReview}
-          onApprove={async () => {
-            setValue(await approveIngestion(id));
-            reload();
-          }}
-          onDiscard={async () => setValue(await discardIngestion(id))}
-        />
+        <>
+          <Slot name="explain" step="review" />
+          <MappingReview
+            ingestionId={id}
+            review={review}
+            onChange={setReview}
+            onApprove={async () => {
+              setValue(await approveIngestion(id));
+              reload();
+            }}
+            onDiscard={async () => setValue(await discardIngestion(id))}
+          />
+        </>
       )}
       {failed && (
         <StepPanel company={company} labelledBy="failed-title">
@@ -98,6 +103,7 @@ export function IngestionStep({ id, company }: { id: string; company: MyCompany 
             {t("ingestion.failed")}
           </h2>
           <ErrorNotice problem={ingestion.error} />
+          <Slot name="explain" step="failed" />
           <Group mt="lg">
             <Button component={Link} to="/data">
               {t("ingestion.another")}
