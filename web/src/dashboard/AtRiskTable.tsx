@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import type { Currency, Results, ScoredAccount } from "../api";
 import { type Lang, useI18n } from "../i18n";
 import { label } from "../labels";
+import { Slot } from "../slots";
 import { download, riskCsv } from "./csv";
 import classes from "./Dashboard.module.css";
 import { Level } from "./Level";
@@ -81,6 +82,7 @@ export function AtRiskTable({ results, currency }: { results: Results; currency:
           {t("results.download")}
         </Button>
       </div>
+      <Slot name="note" area="table" />
       <div className={classes.tools}>
         <SegmentedControl
           value={filter}

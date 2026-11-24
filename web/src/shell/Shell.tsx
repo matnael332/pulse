@@ -10,6 +10,7 @@ import { Logo } from "../components/Logo";
 import { Wordmark } from "../components/Wordmark";
 import { useI18n } from "../i18n";
 import { useSession } from "../session";
+import { Slot } from "../slots";
 import classes from "./Shell.module.css";
 
 export function Shell() {
@@ -85,7 +86,9 @@ export function Shell() {
       </AppShell.Header>
       <AppShell.Main>
         <Container size="xl" px={{ base: 0, sm: "md" }}>
+          <Slot name="banner" />
           <Outlet />
+          <Slot name="foot" />
         </Container>
       </AppShell.Main>
     </AppShell>

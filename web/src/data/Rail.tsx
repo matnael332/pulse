@@ -20,10 +20,10 @@ export const STEPS: RailStep[] = [
 
 // how long a step ahead takes, as the landing page measured it on the demo
 const TAKES: Partial<Record<RailStep, Key>> = {
-  read: "landing.how.read.time",
-  review: "landing.how.review.time",
-  prepare: "landing.how.prepare.time",
-  model: "landing.how.model.time",
+  read: "rail.read.time",
+  review: "rail.review.time",
+  prepare: "rail.prepare.time",
+  model: "rail.model.time",
 };
 
 interface Props {

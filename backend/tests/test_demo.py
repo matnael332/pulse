@@ -187,6 +187,9 @@ def test_the_python_it_ships_holds_what_the_runner_needs_and_no_more(tmp_path):
     server = {n for n in names if n.startswith("pulse_server/")}
     assert server == {n for n in pack.MODULES if n.startswith("pulse_server/")}
     assert not any("__pycache__" in n or n.endswith((".env", ".key", ".db")) for n in names)
+    pack.list_files(tmp_path)
+    listed = json.loads((tmp_path / "files.json").read_text(encoding="utf-8"))
+    assert listed == [{"name": "pulse.zip", "bytes": target.stat().st_size}]
     again = tmp_path / "again.zip"
     pack.pack_python(again)
     assert again.read_bytes() == target.read_bytes()

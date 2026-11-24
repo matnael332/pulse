@@ -144,46 +144,96 @@ function toError(status: number, data: { detail?: unknown }, fallback: string): 
   return new ApiError(status, typeof detail === "string" ? detail : fallback);
 }
 
-export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}) {
-  const response = await fetch(`/api${path}`, {
-    method: init.method ?? "GET",
-    credentials: "same-origin",
-    headers: init.body === undefined ? undefined : { "Content-Type": "application/json" },
-    body: init.body === undefined ? undefined : JSON.stringify(init.body),
-  });
-  if (response.status === 204) return undefined as T;
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw toError(response.status, data, response.statusText);
-  return data as T;
+/** An answer, as the server gives it. */
+export interface Answer {
+  status: number;
+  reason: string;
+  data: unknown; // the JSON, or {} when there is none
 }
 
-/** The upload, with progress (fetch cannot report it): the zip itself is the request body. */
+export interface Upload {
+  promise: Promise<Answer>;
+  abort: () => void;
+}
+
+/** How the site reaches its server. The public demo has none: it answers in the browser (demo/). */
+export interface Transport {
+  send: (method: string, path: string, body?: unknown) => Promise<Answer>;
+  upload: (file: File, language: Lang, onProgress: (fraction: number) => void) => Upload;
+  text: (path: string) => Promise<Answer>; // `data` is the text itself
+  figure: (path: string) => string;
+}
+
+const server: Transport = {
+  async send(method, path, body) {
+    const response = await fetch(`/api${path}`, {
+      method,
+      credentials: "same-origin",
+      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const data = response.status === 204 ? undefined : await response.json().catch(() => ({}));
+    return { status: response.status, reason: response.statusText, data };
+  },
+
+  /** With progress (fetch cannot report it): the zip itself is the request body. */
+  upload(file, language, onProgress) {
+    const xhr = new XMLHttpRequest();
+    const promise = new Promise<Answer>((resolve) => {
+      const query = `filename=${encodeURIComponent(file.name)}&language=${language}`;
+      xhr.open("POST", `/api/ingestions?${query}`);
+      xhr.setRequestHeader("Content-Type", "application/zip");
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) onProgress(event.loaded / event.total);
+      };
+      xhr.onload = () => {
+        let data: unknown = {};
+        try {
+          data = JSON.parse(xhr.responseText);
+        } catch {
+          // not JSON: the status says enough
+        }
+        resolve({ status: xhr.status, reason: xhr.statusText, data });
+      };
+      const interrupted = () =>
+        resolve({ status: 0, reason: "", data: { detail: { code: "upload_interrupted" } } });
+      xhr.onerror = interrupted;
+      xhr.onabort = interrupted;
+      xhr.send(file);
+    });
+    return { promise, abort: () => xhr.abort() };
+  },
+
+  async text(path) {
+    const response = await fetch(`/api${path}`, { credentials: "same-origin" });
+    return {
+      status: response.status,
+      reason: response.statusText,
+      data: response.ok ? await response.text() : undefined,
+    };
+  },
+
+  figure: (path) => `/api${path}`,
+};
+
+let transport = server;
+
+export function setTransport(other: Transport): void {
+  transport = other;
+}
+
+function settled<T>({ status, reason, data }: Answer): T {
+  if (status >= 200 && status < 300) return data as T;
+  throw toError(status, (data ?? {}) as { detail?: unknown }, reason);
+}
+
+export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}) {
+  return settled<T>(await transport.send(init.method ?? "GET", path, init.body));
+}
+
 export function uploadExport(file: File, language: Lang, onProgress: (fraction: number) => void) {
-  const xhr = new XMLHttpRequest();
-  const promise = new Promise<Ingestion>((resolve, reject) => {
-    const query = `filename=${encodeURIComponent(file.name)}&language=${language}`;
-    xhr.open("POST", `/api/ingestions?${query}`);
-    xhr.setRequestHeader("Content-Type", "application/zip");
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) onProgress(event.loaded / event.total);
-    };
-    xhr.onload = () => {
-      let data: { detail?: unknown } = {};
-      try {
-        data = JSON.parse(xhr.responseText);
-      } catch {
-        // not JSON: the status says enough
-      }
-      if (xhr.status >= 200 && xhr.status < 300) resolve(data as unknown as Ingestion);
-      else reject(toError(xhr.status, data, xhr.statusText));
-    };
-    const interrupted = () =>
-      reject(new ApiError(0, "upload_interrupted", { code: "upload_interrupted", params: {} }));
-    xhr.onerror = interrupted;
-    xhr.onabort = interrupted;
-    xhr.send(file);
-  });
-  return { promise, abort: () => xhr.abort() };
+  const { promise, abort } = transport.upload(file, language, onProgress);
+  return { promise: promise.then((answer) => settled<Ingestion>(answer)), abort };
 }
 
 export const getMe = () => api<Me>("/me");
@@ -350,9 +400,7 @@ export const translateInsights = (id: string, language: Lang) =>
     body: { language },
   });
 export const getAdvanced = (id: string) => api<Advanced>(`/runs/${id}/advanced`);
-export async function getDoc(id: string, name: string): Promise<string> {
-  const response = await fetch(`/api/runs/${id}/docs/${name}`, { credentials: "same-origin" });
-  if (!response.ok) throw new ApiError(response.status, response.statusText);
-  return response.text();
-}
-export const figureUrl = (id: string, name: string) => `/api/runs/${id}/figures/${name}`;
+export const getDoc = async (id: string, name: string) =>
+  settled<string>(await transport.text(`/runs/${id}/docs/${name}`));
+export const figureUrl = (id: string, name: string) =>
+  transport.figure(`/runs/${id}/figures/${name}`);

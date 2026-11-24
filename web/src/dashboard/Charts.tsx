@@ -6,6 +6,7 @@ import { BarChart, LineChart } from "@mantine/charts";
 import type { Results } from "../api";
 import { useI18n } from "../i18n";
 import { label } from "../labels";
+import { Slot } from "../slots";
 import classes from "./Dashboard.module.css";
 import { histogram, latestRate, ticks } from "./figures";
 
@@ -31,6 +32,7 @@ export function TrendChart({ trend }: { trend: Results["trend"] }) {
           {t("results.trend")}
         </h2>
       </div>
+      <Slot name="note" area="trend" />
       <div dir="ltr">
         <LineChart
           h={HEIGHT}
@@ -86,6 +88,7 @@ export function RiskHistogram({ results }: { results: Results }) {
           </span>
         </div>
       </div>
+      <Slot name="note" area="distribution" />
       <div dir="ltr">
         <BarChart
           h={HEIGHT}

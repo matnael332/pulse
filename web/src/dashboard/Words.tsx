@@ -8,6 +8,7 @@ import { translateInsights, type Results } from "../api";
 import { useI18n } from "../i18n";
 import { label } from "../labels";
 import { useSession } from "../session";
+import { Slot } from "../slots";
 import classes from "./Dashboard.module.css";
 import { day } from "./deltas";
 import { topReasons } from "./figures";
@@ -24,6 +25,7 @@ export function TopReasons({ results }: { results: Results }) {
           {t("dashboard.reasons")}
         </h2>
       </div>
+      <Slot name="note" area="reasons" />
       {reasons.length === 0 ? (
         <p className={classes.note}>{t("dashboard.reasonsNone")}</p>
       ) : (
@@ -138,6 +140,7 @@ export function DataNotes({ results }: { results: Results }) {
           {t("results.dataNotes")}
         </h2>
       </div>
+      <Slot name="note" area="data" />
       <p>
         {missing.length
           ? t("results.groupsMissing", {

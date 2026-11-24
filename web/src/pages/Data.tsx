@@ -18,6 +18,7 @@ import { Systems } from "../data/Systems";
 import { UploadPanel } from "../data/UploadPanel";
 import { useI18n } from "../i18n";
 import { useSession } from "../session";
+import { Slot } from "../slots";
 
 export type DataView = { kind: "start" } | { kind: "ingestion" | "run"; id: string };
 
@@ -77,6 +78,7 @@ export function Data({ view }: { view: DataView }) {
       {active && view.kind === "start" && company && !company.current && (
         <>
           <Rail at="upload" />
+          <Slot name="guide" />
           <div className={`${classes.deck} ${classes.even}`}>
             <UploadPanel company={company} onCompany={setCompany} />
             <LatestPanel company={company} />
